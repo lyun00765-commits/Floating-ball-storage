@@ -7,5 +7,30 @@
     "captureAtPoint": "captureAtPoint",
     "beginCapturePick": "beginCapturePick",
     "endCapturePick": "endCapturePick"
-  }
+  },
+  "rewrites": {
+    "isManualCaptureCandidate": [
+      {
+        "desc": "命名 token 拼接改用共享的 getNameTokens()",
+        "find": "const i =\n    `${e.id || \"\"} ${String(e.className || \"\")} ${e.getAttribute(\"title\") || \"\"} ${e.getAttribute(\"aria-label\") || \"\"}`.toLowerCase()",
+        "replace": "  const i = getNameTokens(e)"
+      },
+      {
+        "desc": "关闭按钮排除改用共享的 CLOSE_BUTTON_PATTERN",
+        "find": "  if (/close-btn|header-close|modal-close|overlay-close|dismiss|collapse|fa-xmark|fa-times|fa-close|btn-close/.test(i))\n    return !1",
+        "replace": "  if (CLOSE_BUTTON_PATTERN.test(i)) return !1"
+      },
+      {
+        "desc": "弹层/翻页排除改用共享的 isPopupLikeName（尺寸附加条件保持原样）",
+        "find": "  if (\n    (/(上一张|下一张|上一页|下一页|上一首|下一首|previous|next)/.test(i) ||\n      /(?:^|\\s|_|-)(?:popover|popup|dropdown|dropdown-menu|drop-down|menu|tooltip|popper|listbox|context-menu|contextmenu|select-options|abs-panel|floating-panel-options|submenu|sub-menu|option-list|picker|preview-nav|prev|next|previous|carousel|slide|gallery-nav|img-nav|image-nav)(?:\\s|_|-|$)/.test(i)) &&\n      a <= 160 &&\n      o <= 160\n  )\n    return !1",
+        "replace": "  if (isPopupLikeName(i) && a <= 160 && o <= 160) return !1"
+      },
+      {
+        "desc": "中文关闭字样改用共享的 CLOSE_TEXT_PATTERN（尺寸附加条件保持原样）",
+        "find": "  if (/关闭|收起|取消/.test(i) && a <= 40 && o <= 40) return !1",
+        "replace": "  if (CLOSE_TEXT_PATTERN.test(i) && a <= 40 && o <= 40) return !1"
+      }
+    ]
+  },
+  "notes": "已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。"
 }

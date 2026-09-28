@@ -13,6 +13,12 @@ import { collectIframeDocs, elementsFromPointAcrossFrames } from '../core/dom.js
 import { extractFingerprint } from '../core/fingerprint.js'
 import { getElementName } from '../core/element-info.js'
 import { removeReleased } from '../persist/released.js'
+import {
+  getNameTokens,
+  isPopupLikeName,
+  CLOSE_BUTTON_PATTERN,
+  CLOSE_TEXT_PATTERN,
+} from './name-exclusions.js'
 
 function isManualCaptureCandidate(e, t) {
   if ("BODY" === e.tagName || "HTML" === e.tagName) return !1
@@ -22,18 +28,10 @@ function isManualCaptureCandidate(e, t) {
   if (a < 16 || a > 160 || o < 16 || o > 160) return !1
   const r = a / o
   if (r < 0.35 || r > 2.8) return !1
-  const i =
-    `${e.id || ""} ${String(e.className || "")} ${e.getAttribute("title") || ""} ${e.getAttribute("aria-label") || ""}`.toLowerCase()
-  if (/close-btn|header-close|modal-close|overlay-close|dismiss|collapse|fa-xmark|fa-times|fa-close|btn-close/.test(i))
-    return !1
-  if (
-    (/(上一张|下一张|上一页|下一页|上一首|下一首|previous|next)/.test(i) ||
-      /(?:^|\s|_|-)(?:popover|popup|dropdown|dropdown-menu|drop-down|menu|tooltip|popper|listbox|context-menu|contextmenu|select-options|abs-panel|floating-panel-options|submenu|sub-menu|option-list|picker|preview-nav|prev|next|previous|carousel|slide|gallery-nav|img-nav|image-nav)(?:\s|_|-|$)/.test(i)) &&
-      a <= 160 &&
-      o <= 160
-  )
-    return !1
-  if (/关闭|收起|取消/.test(i) && a <= 40 && o <= 40) return !1
+  const i = getNameTokens(e)
+  if (CLOSE_BUTTON_PATTERN.test(i)) return !1
+  if (isPopupLikeName(i) && a <= 160 && o <= 160) return !1
+  if (CLOSE_TEXT_PATTERN.test(i) && a <= 40 && o <= 40) return !1
   for (let n = e.parentElement; n && n !== window.parent.document.body; n = n.parentElement) {
     let r = null
     try {

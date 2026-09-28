@@ -13,8 +13,18 @@
  *   "rename": { "S": "ballContainer" },   // 旧名 -> 新名
  *   "expect": {                           // 新模块中的函数名 -> 基线中的函数名（可省略，默认同名）
  *     "appendBall": "fbAppendBall"
+ *   },
+ *   "rewrites": {                         // 有意改写：先施加到基线的函数体上，再比对
+ *     "isFloatingBallCandidate": [
+ *       { "desc": "排除正则抽到 name-exclusions.js", "find": "...", "replace": "..." }
+ *     ]
  *   }
  * }
+ *
+ * rewrites 的用途：当重构不只是搬运（比如把内联正则抽成共享常量、把状态私有化），
+ * 逐字节比对必然失败。此时把**有意为之的改写**显式登记下来，工具会先把同样的
+ * 改写施加到基线函数体上再比对——这样"改写"是被审阅过的、可复现的，
+ * 而不是用一句"已知差异"糊过去。
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -61,9 +71,23 @@ function compareLines(oldText, newText) {
   return mismatch
 }
 
+const rewrites = spec.rewrites || {}
+let rewritten = 0
+
 for (const name of names) {
-  const oldText = oldFns[name]
+  let oldText = oldFns[name]
   const newText = newFns[name]
+  for (const rw of rewrites[name] || []) {
+    if (!oldText.includes(rw.find)) {
+      console.error(`✗ ${name}: 改写「${rw.desc}」的 find 片段在基线里找不到（规格写错了？）`)
+      bad++
+      oldText = null
+      break
+    }
+    oldText = oldText.split(rw.find).join(rw.replace)
+    rewritten++
+  }
+  if (oldText === null) continue
   if (!oldText) { console.error(`✗ 基线中找不到函数 ${name}（重命名后应为该名）`); bad++; continue }
   if (!newText) { console.error(`✗ ${spec.file} 中找不到函数 ${name}`); bad++; continue }
   const mismatch = compareLines(oldText, newText)
@@ -78,5 +102,6 @@ for (const name of names) {
   } else ok++
 }
 
-console.log(`${bad === 0 ? '✓' : '✗'} ${spec.file}: ${ok}/${names.length} 个函数与基线一致`)
+const rwNote = rewritten ? `（施加了 ${rewritten} 处已登记的有意改写）` : ''
+console.log(`${bad === 0 ? '✓' : '✗'} ${spec.file}: ${ok}/${names.length} 个函数与基线一致${rwNote}`)
 process.exitCode = bad ? 1 : 0
