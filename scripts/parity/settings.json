@@ -2,9 +2,26 @@
   "base": "f14086f",
   "file": "src/settings.js",
   "rename": {
-    "oe": "isMobile", "re": "settingsSchema", "ie": "settings",
-    "le": "effectivePosition", "se": "isHorizontalLayout", "Ae": "isVerticalLayout",
-    "ce": "saveSettings", "pe": "settingsApi", "e": "klona"
+    "oe": "isMobile",
+    "re": "settingsSchema",
+    "ie": "settings",
+    "le": "effectivePosition",
+    "se": "isHorizontalLayout",
+    "Ae": "isVerticalLayout",
+    "ce": "saveSettings",
+    "pe": "settingsApi",
+    "e": "klona"
   },
-  "expect": { "saveSettings": "saveSettings" }
+  "expect": {
+    "saveSettings": "saveSettings"
+  },
+  "rewrites": {
+    "saveSettings": [
+      {
+        "desc": "移除调试用 console.info（正式版不再输出保存日志）",
+        "find": "    ;(console.info(\"[集成控件] 保存设置:\", settings.value), replaceVariables(t, { type: \"script\", script_id: getScriptId() }))",
+        "replace": "    replaceVariables(t, { type: \"script\", script_id: getScriptId() })"
+      }
+    ]
+  }
 }

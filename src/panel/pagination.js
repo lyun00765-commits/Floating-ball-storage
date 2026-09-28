@@ -2,8 +2,8 @@
  * 悬浮球容器分页
  *
  * 面板空间有限，收纳的球按布局方向分页：
- *   垂直布局（左/右贴边）：每页 {PER_PAGE.vertical{'}'} 个，纵向排列
- *   水平布局（上/下贴边）：每页 {PER_PAGE.horizontal{'}'} 个，横向排列
+ *   垂直布局（左/右贴边）：每页 PER_PAGE.vertical 个，纵向排列
+ *   水平布局（上/下贴边）：每页 PER_PAGE.horizontal 个，横向排列
  *
  * 两个方向当前取相同值，让翻页行为在切换贴边方向时保持一致、可预期。
  * 若将来垂直方向能容纳更多，只调这里即可——但必须同时保证 reorient() 会重新分页。
@@ -105,7 +105,7 @@ function compact() {
   }
   // 清空所有页
   while (pageLayer.firstChild) pageLayer.removeChild(pageLayer.firstChild)
-  // 重新顺位打包：每页填满 fbPerPage() 个，后面球自动补位
+  // 重新顺位打包：每页填满 perPage() 个，后面的球自动补位
   const per = perPage(),
     doc = window.parent && window.parent.document ? window.parent.document : document,
     horiz = isHorizontal()
@@ -137,10 +137,10 @@ export function getContainer() {
 }
 
 export function setBallContainer(e) {
-    ballContainer = e
-    pageLayer = null
-    if (e) {
-      const horiz = (function () {
+  ballContainer = e
+  pageLayer = null
+  if (e) {
+    const horiz = (function () {
         let n = e
         while (n && !(n.classList && n.classList.contains("edge-panel-root"))) n = n.parentNode
         return !!(n && n.classList && n.classList.contains("edge-panel-root--horizontal"))

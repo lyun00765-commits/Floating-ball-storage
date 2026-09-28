@@ -2,15 +2,30 @@
   "base": "145c339",
   "file": "src/persist/saved-balls.js",
   "rename": {
-    "J": "pendingRestoreBalls", "Q": "persistenceInitialized", "H": "isRestoring",
-    "K": "restoreDepth", "Z": "finishRestore", "ee": "persistCapturedBalls",
-    "te": "findPendingRestoreBall", "ae": "markBallRestored",
-    "D": "persistSchema", "e": "klona"
+    "J": "pendingRestoreBalls",
+    "Q": "persistenceInitialized",
+    "H": "isRestoring",
+    "K": "restoreDepth",
+    "Z": "finishRestore",
+    "ee": "persistCapturedBalls",
+    "te": "findPendingRestoreBall",
+    "ae": "markBallRestored",
+    "D": "persistSchema",
+    "e": "klona"
   },
   "expect": {
     "finishRestore": "finishRestore",
     "persistCapturedBalls": "persistCapturedBalls",
     "findPendingRestoreBall": "findPendingRestoreBall",
     "markBallRestored": "markBallRestored"
+  },
+  "rewrites": {
+    "persistCapturedBalls": [
+      {
+        "desc": "写盘失败由静默吞掉改为留痕（否则「新收纳的球没被记住」无从排查）",
+        "find": "  } catch {}",
+        "replace": "  } catch (e) {\n    // 写盘失败意味着新收纳的球不会被记住，必须留痕，否则无从排查\n    console.warn(\"[集成控件] 保存已收纳列表失败:\", e)\n  }"
+      }
+    ]
   }
 }

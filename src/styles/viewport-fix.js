@@ -27,13 +27,13 @@ export const VIEWPORT_FIX_CSS =
   ".edge-tab-fade-leave-active{transition:none}" +
   ".edge-tab-fade-enter-active{transition:opacity .3s ease}" +
   ".edge-tab-fade-enter-from,.edge-tab-fade-leave-to{opacity:0}" +
-  "}"
+  "}";
 
 /** 幂等注入：已存在同 id 的 style 时直接返回 */
 export function ensureViewportFixStyle(doc) {
-  if (doc.getElementById("edge-panel-viewport-fix")) return
-  var s = doc.createElement("style")
-  s.id = "edge-panel-viewport-fix"
-  s.textContent = VIEWPORT_FIX_CSS
-  ;(doc.head || doc.documentElement).appendChild(s)
+  if (doc.getElementById("edge-panel-viewport-fix")) return;
+  var s = doc.createElement("style");
+  s.id = "edge-panel-viewport-fix";
+  s.textContent = VIEWPORT_FIX_CSS;
+  (doc.head || doc.documentElement).appendChild(s);
 }

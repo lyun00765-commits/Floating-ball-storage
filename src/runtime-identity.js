@@ -40,7 +40,9 @@ export function resolveCurrentFrame() {
   try {
     const e = window.frameElement
     if (e && e.ownerDocument === parentDoc) return e
-  } catch (e) {}
+  } catch (e) {
+    /* 跨域时 frameElement 不可读，退化为按 name 查找 */
+  }
   if (!currentFrameName || "function" != typeof parentDoc.getElementById) return null
   const e = parentDoc.getElementById(currentFrameName)
   return e && "iframe" === String(e.tagName || "").toLowerCase() ? e : null

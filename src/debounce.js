@@ -17,22 +17,22 @@
  * @returns {Function & { cancel: () => void }}
  */
 function debounce(fn, wait) {
-  let timer = null
+  let timer = null;
   const debounced = function (...args) {
-    if (timer !== null) clearTimeout(timer)
+    if (timer !== null) clearTimeout(timer);
     timer = setTimeout(() => {
-      timer = null
-      fn.apply(this, args)
-    }, wait)
-  }
+      timer = null;
+      fn.apply(this, args);
+    }, wait);
+  };
   debounced.cancel = () => {
-    if (timer !== null) clearTimeout(timer)
-    timer = null
-  }
-  return debounced
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+  };
+  return debounced;
 }
 
 /** 兼容原调用点：原代码写作 debounceSource.debounce(fn, wait) */
-export const debounceSource = { debounce }
+export const debounceSource = { debounce };
 
-export { debounce }
+export { debounce };

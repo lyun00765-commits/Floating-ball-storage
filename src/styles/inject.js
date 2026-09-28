@@ -6,17 +6,21 @@
  * 克隆到父窗口（见 runtime 的 edgePanelStyleHost 逻辑）。
  * 这里保持相同的插入位置与标记，确保样式生效路径不变。
  */
-import css from './edge-panel.css'
+import css from "./edge-panel.css";
 
 /** 原 vue-style-loader 生成的条目 id（"模块id:parts索引"） */
-const STYLE_MARK = 'ffda7b94:0'
+const STYLE_MARK = "ffda7b94:0";
 
 export function injectStyles() {
-  const doc = document
-  if (doc.head && doc.head.querySelector(`style[data-vue-ssr-id="${STYLE_MARK}"]`)) return
-  const style = doc.createElement('style')
-  style.type = 'text/css'
-  style.setAttribute('data-vue-ssr-id', STYLE_MARK)
-  style.textContent = css
-  ;(doc.head || doc.documentElement).appendChild(style)
+  const doc = document;
+  if (
+    doc.head &&
+    doc.head.querySelector(`style[data-vue-ssr-id="${STYLE_MARK}"]`)
+  )
+    return;
+  const style = doc.createElement("style");
+  style.type = "text/css";
+  style.setAttribute("data-vue-ssr-id", STYLE_MARK);
+  style.textContent = css;
+  (doc.head || doc.documentElement).appendChild(style);
 }

@@ -56,14 +56,20 @@ function disableDraggable(e, t) {
       t && pendingDraggableRestore.set(t, !0)
       try {
         a.draggable("disable")
-      } catch {}
+      } catch {
+        /* 宿主 jQuery UI 缺失或该元素未初始化拖拽 */
+      }
     }
     a.find(".ui-draggable").each(function () {
       try {
         n(this).draggable("disable")
-      } catch {}
+      } catch {
+        /* 同上：逐个跳过 */
+      }
     })
-  } catch {}
+  } catch {
+    /* 拖拽禁用整体失败（宿主未加载 jQuery UI），不影响收纳本身 */
+  }
 }
 function protectStyle(e) {
   const t = styleProtections.get(e)
@@ -96,7 +102,9 @@ function protectStyle(e) {
           configurable: !0,
           enumerable: !0,
         })
-      } catch {}
+      } catch {
+        /* 个别属性不可重定义，跳过该属性 */
+      }
     }))
   const l = {
     originalStyleDescriptor: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "style"),
@@ -309,11 +317,15 @@ export function restoreBall(e) {
           PROTECTED_STYLE_PROPS.forEach((e) => {
             try {
               delete a[e]
-            } catch {}
+            } catch {
+              /* 属性不可删（如只读成员），跳过 */
+            }
           }),
           (t.isProtected = !1),
           styleProtections.delete(e))
-      } catch {}
+      } catch {
+        /* 复原样式失败：元素可能已移除，忽略 */
+      }
   })(t),
     unbindInteractionGuards(t),
     t.removeAttribute("data-edge-ball-id"),
@@ -345,15 +357,21 @@ export function restoreBall(e) {
         if (o || r) {
           try {
             a.draggable("enable")
-          } catch {}
+          } catch {
+            /* 宿主 jQuery UI 缺失 */
+          }
           t && pendingDraggableRestore.delete(t)
         }
         a.find(".ui-draggable").each(function () {
           try {
             n(this).draggable("enable")
-          } catch {}
+          } catch {
+            /* 同上：逐个跳过 */
+          }
         })
-      } catch {}
+      } catch {
+        /* 恢复拖拽整体失败，不影响球已回到页面 */
+      }
     })(t, e.id))
 }
 export function insertBallBefore(e, t) {

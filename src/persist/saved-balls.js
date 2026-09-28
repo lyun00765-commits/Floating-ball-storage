@@ -55,7 +55,10 @@ export function persistCapturedBalls(e) {
     const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: t },
       r = JSON.parse(JSON.stringify(o))
     ;(replaceVariables(r, { type: "script", script_id: getOwnScriptId() }), (pendingRestoreBalls.value = r.savedBalls))
-  } catch {}
+  } catch (e) {
+    // 写盘失败意味着新收纳的球不会被记住，必须留痕，否则无从排查
+    console.warn("[集成控件] 保存已收纳列表失败:", e)
+  }
 }
 export function findPendingRestoreBall(e) {
   for (const t of pendingRestoreBalls.value) if (fingerprintsMatch(e, t.fingerprint)) return t
@@ -74,7 +77,9 @@ export function initPersistence() {
         a = persistSchema.parse(n)
       ;(a.savedBalls.length > 0 && (pendingRestoreBalls.value = klona(a.savedBalls)),
         a.releasedFingerprints && a.releasedFingerprints.length > 0 && setReleased(a.releasedFingerprints))
-    } catch {}
+    } catch (e) {
+      console.warn("[集成控件] 读取已收纳列表失败，本次不恢复:", e)
+    }
   }
 }
 

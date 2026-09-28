@@ -131,7 +131,9 @@ export function scanOnce(forceFullScan) {
     for (const sel of selectors)
       try {
         doc.querySelectorAll(sel).forEach((el) => candidates.add(el))
-      } catch {}
+      } catch {
+        /* 个别选择器不被支持或文档已失效，跳过 */
+      }
 
   // 兜底全量扫描：只收集"计算样式为 fixed"的元素（覆盖靠 CSS class 而非行内样式实现悬浮
   // 定位的情况）。不收集 absolute 元素，因为 absolute 在普通布局中极其常见，纳入兜底扫描
@@ -146,14 +148,19 @@ export function scanOnce(forceFullScan) {
         try {
           scanRoot = doc.querySelectorAll("button:not(#chat, #chat *), div:not(#chat, #chat *), span:not(#chat, #chat *), a:not(#chat, #chat *)")
         } catch {
+          /* :not(#chat, #chat *) 不被支持时退化为全量选择器 */
           scanRoot = doc.querySelectorAll("button, div, span, a")
         }
         scanRoot.forEach((el) => {
           try {
             if ("fixed" === window.parent.getComputedStyle(el).position) candidates.add(el)
-          } catch {}
+          } catch {
+            /* 元素已移除或跨文档取样式失败，跳过 */
+          }
         })
-      } catch {}
+      } catch {
+        /* 单个文档的全量扫描失败不影响其它文档 */
+      }
     })
     scanThrottle = 6
   } else scanThrottle--
@@ -169,6 +176,8 @@ export function scanOnce(forceFullScan) {
   toCapture.forEach((el) => tryCaptureBall(el))
 }
 export function startAutoScan() {
+  // 已在运行则不再启动，否则会挂上第二个 interval（拆开调用时也能自保）
+  if (scanTimer) return
   deps.store.autoCaptureEnabled.value &&
     "auto" === settingsApi.getCaptureMode() &&
     (scanThrottle = 0,
@@ -207,7 +216,9 @@ export function restorePendingBalls() {
           if (t) {
             if (isFloatingBoxElement(t, !0) && tryCaptureBall(t, i)) return (e.add(o), !0)
           }
-        } catch {}
+        } catch {
+          /* id 非法或文档已失效，本次放弃该球 */
+        }
         return !1
       }
       let l = ""
@@ -228,7 +239,9 @@ export function restorePendingBalls() {
               if (deps.store.fingerprintsMatch(a, n.fingerprint) && tryCaptureBall(t, i)) return (e.add(o), !0)
             }
           }
-        } catch {}
+        } catch {
+          /* 选择器失效（如含特殊字符的 class），本次放弃该球 */
+        }
       return !1
     },
     a = (o) => {

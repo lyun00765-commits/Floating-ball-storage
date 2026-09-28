@@ -56,10 +56,38 @@ const newFns = grabFunctions(newSrc, names)
 
 let bad = 0
 let ok = 0
-/** 逐行比较：允许整体缩进差异（搬运时对象方法会整体减 2 格），其余必须完全一致 */
+/**
+ * 逐行比较：允许整体缩进差异（搬运时对象方法会整体减 2 格），其余必须完全一致。
+ *
+ * 注释行不参与比较：注释只说明「为什么」，不影响行为，补注释或改写注释
+ * 都不该让等价性证明失败。若要改的恰恰是代码，仍会被如实检出。
+ * （行尾注释因其所在行含代码，仍参与比较。）
+ */
+function isCommentLine(line) {
+  const l = line.trim()
+  return !l || l.startsWith('//') || l.startsWith('/*') || l.startsWith('*')
+}
 function compareLines(oldText, newText) {
-  const a = oldText.split('\n').map((l) => l.trim())
-  const b = newText.split('\n').map((l) => l.trim())
+  const strip = (t) => {
+    const raw = t
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => !isCommentLine(l))
+    // 把跨行的空 catch 折叠回单行写法：`catch {` + `}` 与 `catch {}` 语义相同，
+    // 差别只来自「有没有在 catch 块里写注释」，不应判为不一致。
+    const out = []
+    for (let i = 0; i < raw.length; i++) {
+      if (/catch\s*\{\s*$/.test(raw[i]) && raw[i + 1] === '}') {
+        out.push(raw[i].replace(/\s*\{\s*$/, '') + ' {}')
+        i++
+        continue
+      }
+      out.push(raw[i])
+    }
+    return out
+  }
+  const a = strip(oldText)
+  const b = strip(newText)
   const mismatch = []
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const x = a[i]

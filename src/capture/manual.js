@@ -38,7 +38,9 @@ function isManualCaptureCandidate(e, t) {
     let r = null
     try {
       r = window.parent.getComputedStyle(n)
-    } catch {}
+    } catch {
+      /* 祖先节点可能已脱离文档，跳过它继续向上 */
+    }
     if (!r) continue
     if ("fixed" !== r.position && "absolute" !== r.position) continue
     const i = n.getBoundingClientRect()

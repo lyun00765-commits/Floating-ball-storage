@@ -27,7 +27,9 @@ function toast(level, msg) {
     // 宿主可能压根没注入 toastr，用 typeof 判断可以避免 ReferenceError
     if (typeof toastr === "undefined" || !toastr) return
     if (typeof toastr[level] === "function") toastr[level](msg)
-  } catch {}
+  } catch {
+    /* 提示失败不能影响主流程（尤其点选结束时的遮罩移除） */
+  }
 }
 
 export const notify = {

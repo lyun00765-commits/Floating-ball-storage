@@ -14,5 +14,14 @@
     "saveReleased": "saveReleasedFps",
     "addReleased": "addReleasedFp",
     "removeReleased": "removeReleasedFp"
+  },
+  "rewrites": {
+    "saveReleased": [
+      {
+        "desc": "写盘失败由静默吞掉改为留痕（用户看不出「释放记忆没保存」）",
+        "find": "  } catch {}",
+        "replace": "  } catch (err) {\n    console.warn(\"[集成控件] 保存释放记忆失败:\", err)\n  }"
+      }
+    ]
   }
 }

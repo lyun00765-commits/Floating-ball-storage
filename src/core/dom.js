@@ -28,9 +28,13 @@ export function collectIframeFrames() {
     window.parent.document.querySelectorAll("iframe").forEach((t) => {
       try {
         t.contentDocument && e.push(t)
-      } catch {}
+      } catch {
+        /* 跨域 iframe 拒绝访问 contentDocument，跳过 */
+      }
     })
-  } catch {}
+  } catch {
+    /* 父文档不可用（脚本未运行在 iframe 内） */
+  }
   return e
 }
 export function collectIframeDocs() {
@@ -40,7 +44,9 @@ export function elementsFromPointAcrossFrames(e, t) {
   const n = []
   try {
     n.push(...window.parent.document.elementsFromPoint(e, t))
-  } catch {}
+  } catch {
+    /* 父文档不可用时退化为只测当前文档 */
+  }
   for (const a of collectIframeFrames()) {
     try {
       const o = a.getBoundingClientRect(),
@@ -48,7 +54,9 @@ export function elementsFromPointAcrossFrames(e, t) {
         i = t - o.top
       if (r < 0 || i < 0 || r > o.width || i > o.height) continue
       n.push(...a.contentDocument.elementsFromPoint(r, i))
-    } catch {}
+    } catch {
+      /* 同上：跨域 iframe 跳过 */
+    }
   }
   return n
 }

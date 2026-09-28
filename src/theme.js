@@ -118,8 +118,7 @@ export const themeApi = {
         themeObserver.observe(window.parent.document.body, { attributes: !0, attributeFilter: ["class", "style"] }),
         themeObserver.observe(window.parent.document.documentElement, { attributes: !0, attributeFilter: ["style", "class"] }))
       const t = window.parent.document.querySelector("#chat")
-      ;(t && themeObserver.observe(t, { attributes: !0, attributeFilter: ["style", "class"], childList: !0 }),
-        console.log("[集成控件] 主题监听器已初始化"))
+      t && themeObserver.observe(t, { attributes: !0, attributeFilter: ["style", "class"], childList: !0 })
     } catch (e) {
       console.error("[集成控件] 无法监听主题变化:", e)
     }

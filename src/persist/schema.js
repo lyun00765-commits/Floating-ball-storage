@@ -20,7 +20,12 @@ const X = z,
             icon: X.z.string(),
             name: X.z.string(),
             originalPosition: X.z
-              .object({ top: X.z.string(), left: X.z.string(), right: X.z.string(), bottom: X.z.string() })
+              .object({
+                top: X.z.string(),
+                left: X.z.string(),
+                right: X.z.string(),
+                bottom: X.z.string(),
+              })
               .optional(),
             originalStyle: X.z.string().optional(),
             order: X.z.number().optional(),
@@ -29,6 +34,6 @@ const X = z,
         .default([]),
       releasedFingerprints: X.z.array(T).default([]),
     })
-    .prefault({})
+    .prefault({});
 
-export { D as persistSchema }
+export { D as persistSchema };

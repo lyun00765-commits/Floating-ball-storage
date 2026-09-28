@@ -34,7 +34,7 @@ function saveSettings() {
       ...(getVariables({ type: "script", script_id: getScriptId() }) ?? {}),
       integration_settings: klona(settings.value),
     }
-    ;(console.info("[集成控件] 保存设置:", settings.value), replaceVariables(t, { type: "script", script_id: getScriptId() }))
+    replaceVariables(t, { type: "script", script_id: getScriptId() })
   } catch (e) {
     console.warn("[集成控件] 保存设置失败:", e)
   }
@@ -46,43 +46,48 @@ export const settingsApi = {
     isHorizontalLayout: isHorizontalLayout,
     isVerticalLayout: isVerticalLayout,
     initSettings: function () {
-      ;((isMobile.value = (function () {
+      isMobile.value = (function () {
         const e = window.parent,
           t = e.innerWidth,
           n = "ontouchstart" in e || navigator.maxTouchPoints > 0
         return t < 768 || (n && t < 1024)
-      })()),
-        console.info("[集成控件] 移动端检测:", isMobile.value))
+      })()
       try {
-        const e = getVariables({ type: "script", script_id: getScriptId() })
-        console.info("[集成控件] 读取的脚本变量:", e)
-        const t = e?.integration_settings
+        const e = getVariables({ type: "script", script_id: getScriptId() }),
+          t = e?.integration_settings
         if (t && "object" == typeof t) {
           const e = settingsSchema.parse(t)
-          ;((settings.value = e), console.info("[集成控件] 解析后的设置:", e, "有效位置:", effectivePosition.value))
-        } else
-          ((settings.value = { panelPosition: null, captureMode: "manual" }), console.info("[集成控件] 没有保存的设置，使用默认位置:", effectivePosition.value))
+          settings.value = e
+        } else settings.value = { panelPosition: null, captureMode: "manual" }
       } catch (e) {
         ;(console.warn("[集成控件] 读取设置失败，使用默认值:", e), (settings.value = { panelPosition: null, captureMode: "manual" }))
       }
     },
     saveSettings: saveSettings,
     setPanelPosition: function (e) {
-      ;(console.info("[集成控件] 设置面板位置:", e), (settings.value.panelPosition = e), saveSettings())
+      ;((settings.value.panelPosition = e), saveSettings())
+      // 切换贴边方向后要等布局落定再重排分页
       try {
         window.setTimeout(() => {
           try {
             reorient()
-          } catch (err) {}
+          } catch (err) {
+            console.warn("[集成控件] 重排分页失败:", err)
+          }
         }, 40)
-      } catch (err) {}
+      } catch (err) {
+        console.warn("[集成控件] 无法调度分页重排:", err)
+      }
     },
     setCaptureMode: function (e) {
       const t = "auto" === e ? "auto" : "manual"
       ;(settings.value.captureMode = t, saveSettings())
       try {
         notifyCaptureModeChange()
-      } catch {}
+      } catch (e) {
+        /* 联动自动扫描失败不该阻断设置保存，但要留痕 */
+        console.warn("[集成控件] 联动自动扫描失败:", e)
+      }
     },
     getCaptureMode: function () {
       return "auto" === settings.value.captureMode ? "auto" : "manual"

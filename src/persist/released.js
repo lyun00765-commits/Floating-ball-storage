@@ -19,7 +19,9 @@ export function saveReleased() {
       releasedFingerprints: JSON.parse(JSON.stringify(releasedFingerprints.value)),
     }
     replaceVariables(e, { type: "script", script_id: getOwnScriptId() })
-  } catch {}
+  } catch (err) {
+    console.warn("[集成控件] 保存释放记忆失败:", err)
+  }
 }
 export function addReleased(e) {
   if (!e || !isValidFingerprint(e)) return
