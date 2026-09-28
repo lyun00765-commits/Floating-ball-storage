@@ -9,7 +9,6 @@
  * 必须多个信号同时成立。数值越严格，误捕越少、漏捕越多，可按需微调。
  */
 
-import { settingsApi } from '../settings.js'
 import { extractFingerprint } from '../core/fingerprint.js'
 import { isReleasedFingerprint } from '../persist/released.js'
 import { getContainer } from '../panel/pagination.js'
@@ -42,7 +41,12 @@ export function isFloatingBallCandidate(e, ownScriptId) {
   if (e.hasAttribute("data-edge-panel-ignore")) return !1
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1
   if ((e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")) === ownScriptId) return !1
-  if ("auto" === settingsApi.getCaptureMode() && isReleasedFingerprint(extractFingerprint(e))) return !1
+  // 释放记忆：用户明确表示「不要这个球」，扫描时应当跳过。
+  // 不能加「当前是自动模式」的前置条件——长按一键捕获走的也是这条扫描路径，
+  // 但它只在临时打开 autoCaptureEnabled 时触发、并不改 captureMode，
+  // 于是手动设置下长按会把已释放的球又收回来，还顺手清掉释放记忆。
+  // 手动点选不经过本函数，用户明确指认时依然可以捕获被释放过的球。
+  if (isReleasedFingerprint(extractFingerprint(e))) return !1
   if (getContainer() && getContainer().contains(e)) return !1
   if (e.closest(".edge-panel-root,[data-edge-panel-owner]")) return !1
 

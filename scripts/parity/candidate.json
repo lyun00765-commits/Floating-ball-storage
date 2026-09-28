@@ -5,7 +5,7 @@
   "expect": {
     "isFloatingBallCandidate": "isFloatingBallCandidate"
   },
-  "notes": "识别规则纯搬运（基线中本就是语义化命名）。常量链由 `const A = 1,` 形式拆为独立 export 语句，不影响函数体。 已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 【注意】本次含一处行为修正：新增关闭按钮排除（技术债 A1），已作为独立 rewrite 登记。",
+  "notes": "识别规则纯搬运（基线中本就是语义化命名）。常量链由 `const A = 1,` 形式拆为独立 export 语句，不影响函数体。 已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 【注意】本次含一处行为修正：新增关闭按钮排除（技术债 A1），已作为独立 rewrite 登记。 释放记忆检查的条件修正已登记 rewrites。",
   "rewrites": {
     "isFloatingBallCandidate": [
       {
@@ -22,6 +22,11 @@
         "desc": "【行为修正】新增关闭按钮排除：原自动扫描会把 .close-btn / fa-times 这类元素误收（技术债 A1）",
         "find": "  const tokens = getNameTokens(e)\n  if (isPopupLikeName(tokens)) return !1\n",
         "replace": "  const tokens = getNameTokens(e)\n  if (isPopupLikeName(tokens)) return !1\n  // 关闭类按钮（.close-btn / fa-times / dismiss …）：尺寸小、常为 fixed 或 absolute、\n  // 光标常是 pointer，很容易凑够打分阈值被误收。手动点选一直有这条排除，\n  // 自动扫描此前漏了（技术债 A1），这里补上。\n  if (CLOSE_BUTTON_PATTERN.test(tokens)) return !1\n"
+      },
+      {
+        "desc": "【行为修正】释放记忆检查去掉「当前是自动模式」的前置条件：长按一键捕获在手动设置下会把已释放的球收回来并清掉记忆，与自动模式下同一操作的行为不一致",
+        "find": "  if (\"auto\" === settingsApi.getCaptureMode() && isReleasedFingerprint(extractFingerprint(e))) return !1",
+        "replace": "  // 释放记忆：用户明确表示「不要这个球」，扫描时应当跳过。\n  // 不能加「当前是自动模式」的前置条件——长按一键捕获走的也是这条扫描路径，\n  // 但它只在临时打开 autoCaptureEnabled 时触发、并不改 captureMode，\n  // 于是手动设置下长按会把已释放的球又收回来，还顺手清掉释放记忆。\n  // 手动点选不经过本函数，用户明确指认时依然可以捕获被释放过的球。\n  if (isReleasedFingerprint(extractFingerprint(e))) return !1"
       }
     ]
   }
