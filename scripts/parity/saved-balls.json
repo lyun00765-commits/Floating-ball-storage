@@ -1,0 +1,16 @@
+{
+  "base": "145c339",
+  "file": "src/persist/saved-balls.js",
+  "rename": {
+    "J": "pendingRestoreBalls", "Q": "persistenceInitialized", "H": "isRestoring",
+    "K": "restoreDepth", "Z": "finishRestore", "ee": "persistCapturedBalls",
+    "te": "findPendingRestoreBall", "ae": "markBallRestored",
+    "D": "persistSchema", "e": "klona"
+  },
+  "expect": {
+    "finishRestore": "finishRestore",
+    "persistCapturedBalls": "persistCapturedBalls",
+    "findPendingRestoreBall": "findPendingRestoreBall",
+    "markBallRestored": "markBallRestored"
+  }
+}

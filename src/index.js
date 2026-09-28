@@ -10,6 +10,16 @@ import { getElementIcon, getElementName } from "./core/element-info.js"
 import { getOwnScriptId } from "./core/platform.js"
 import { beginCapturePick, endCapturePick } from "./capture/manual.js"
 import {
+  pendingRestoreBalls,
+  finishRestore,
+  persistCapturedBalls,
+  findPendingRestoreBall,
+  markBallRestored,
+  initPersistence,
+  beginRestoreBatch,
+  isRestoreInProgress,
+} from "./persist/saved-balls.js"
+import {
   setCapturedBallClickHandler,
   moveBallToContainer,
   restoreBall,
@@ -22,7 +32,6 @@ import {
   removeReleased,
   clearReleased,
   getReleasedCount,
-  setReleased,
 } from "./persist/released.js"
 import {
   setBallContainer,
@@ -30,7 +39,6 @@ import {
   goPage,
   getPageState,
   getContainer,
-  getBallsInOrder,
   containsBall,
 } from "./panel/pagination.js"
 
@@ -42,87 +50,11 @@ function withScopeId(component, attrs) {
 }
 
 const o = Vue
-const X = z,
-  T = X.z.object({
-    scriptId: X.z.string().nullable(),
-    elementId: X.z.string().nullable(),
-    classSelector: X.z.string().nullable(),
-    title: X.z.string().nullable(),
-  }),
-  D = X.z
-    .object({
-      savedBalls: X.z
-        .array(
-          X.z.object({
-            fingerprint: T,
-            icon: X.z.string(),
-            name: X.z.string(),
-            originalPosition: X.z
-              .object({ top: X.z.string(), left: X.z.string(), right: X.z.string(), bottom: X.z.string() })
-              .optional(),
-            originalStyle: X.z.string().optional(),
-            order: X.z.number().optional(),
-          }),
-        )
-        .default([]),
-      releasedFingerprints: X.z.array(T).default([]),
-    })
-    .prefault({})
-const J = (0, o.ref)([])
-let Q = !1,
-  H = !1,
-  K = 0
-function Z(e) {
-  ;(K--, K <= 0 && ((K = 0), H && ((H = !1), ee(e))))
-}
-function ee(e) {
-  try {
-    const t = [],
-      a = new Map()
-    getBallsInOrder().forEach((ball, idx) => a.set(ball, idx))
-    for (const n of Object.values(e))
-      if (isValidFingerprint(n.fingerprint)) {
-        const e = {
-            scriptId: n.fingerprint.scriptId,
-            elementId: n.fingerprint.elementId,
-            classSelector: n.fingerprint.classSelector,
-            title: n.fingerprint.title,
-          },
-          o = a.get(n.element) ?? t.length
-        t.push({
-          fingerprint: e,
-          icon: n.icon,
-          name: n.name,
-          originalPosition: n.originalPosition
-            ? {
-                top: n.originalPosition.top,
-                left: n.originalPosition.left,
-                right: n.originalPosition.right,
-                bottom: n.originalPosition.bottom,
-              }
-            : void 0,
-          originalStyle: n.originalStyle,
-          order: o,
-        })
-      }
-    t.sort((e, t) => (e.order ?? 0) - (t.order ?? 0))
-    const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: t },
-      r = JSON.parse(JSON.stringify(o))
-    ;(replaceVariables(r, { type: "script", script_id: getOwnScriptId() }), (J.value = r.savedBalls))
-  } catch {}
-}
-function te(e) {
-  for (const t of J.value) if (fingerprintsMatch(e, t.fingerprint)) return t
-  return null
-}
-function ae(e) {
-  J.value = J.value.filter((t) => !fingerprintsMatch(e, t.fingerprint))
-}
 const oe = (0, o.ref)(!1)
-const re = X.z
+const re = z.z
     .object({
-      panelPosition: X.z.enum(["left", "right", "top", "bottom"]).nullable().default(null),
-      captureMode: X.z.enum(["manual", "auto"]).nullable().default("manual"),
+      panelPosition: z.z.enum(["left", "right", "top", "bottom"]).nullable().default(null),
+      captureMode: z.z.enum(["manual", "auto"]).nullable().default("manual"),
     })
     .prefault({}),
   ie = (0, o.ref)({ panelPosition: null, captureMode: "manual" }),
@@ -223,7 +155,7 @@ function ke(e) {
 function Pe() {
   const e = Object.values(ue.value)
   ;((ue.value = {}),
-    ee(ue.value),
+    persistCapturedBalls(ue.value),
     e.forEach((e) => {
       ;(e.element.isConnected && restoreBall(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
     }))
@@ -262,7 +194,7 @@ const Ne = {
   isPanelOpen: fe,
   panelLeftPosition: ve,
   panelPositionStyle: be,
-  pendingRestoreBalls: J,
+  pendingRestoreBalls: pendingRestoreBalls,
   effectivePosition: pe.effectivePosition,
   isHorizontalLayout: pe.isHorizontalLayout,
   isVerticalLayout: pe.isVerticalLayout,
@@ -297,7 +229,7 @@ const Ne = {
           insertBallBefore(e, a)
         } else moveBallToContainer(e)
       } else moveBallToContainer(e)
-      ;(ae(e.fingerprint), H || ee(ue.value))
+      ;(markBallRestored(e.fingerprint), isRestoreInProgress() || persistCapturedBalls(ue.value))
     }
   },
   removeCapturedBall: function (e) {
@@ -306,7 +238,7 @@ const Ne = {
       const n = t.element,
         a = t.fingerprint,
         { [e]: _, ...o } = ue.value
-      ;((ue.value = o), ae(a), ee(ue.value), n && restoreBall(t), he.forEach((t) => t(e, a, n)))
+      ;((ue.value = o), markBallRestored(a), persistCapturedBalls(ue.value), n && restoreBall(t), he.forEach((t) => t(e, a, n)))
     }
   },
   clickCapturedBall: function (e, t = "default") {
@@ -478,7 +410,7 @@ const Ne = {
         const e = ue.value[t]
         ;(e && he.forEach((n) => n(t, e.fingerprint, e.element)), delete ue.value[t])
       }
-      ;((ue.value = { ...ue.value }), ee(ue.value))
+      ;((ue.value = { ...ue.value }), persistCapturedBalls(ue.value))
     }
     for (const [t, n] of ct) {
       ;(t.isConnected && ue.value[n]) || ct.delete(t)
@@ -559,27 +491,16 @@ const Ne = {
   showFloatingBall: function (e, t) {
     e.style.cssText = t
   },
-  initPersistence: function () {
-    if (!Q) {
-      Q = !0
-      try {
-        const t = getOwnScriptId(),
-          n = getVariables({ type: "script", script_id: t }),
-          a = D.parse(n)
-        ;(a.savedBalls.length > 0 && (J.value = e(a.savedBalls)),
-          a.releasedFingerprints && a.releasedFingerprints.length > 0 && setReleased(a.releasedFingerprints))
-      } catch {}
-    }
-  },
-  saveCapturedBalls: () => ee(ue.value),
-  findPendingRestoreBall: te,
+  initPersistence,
+  saveCapturedBalls: () => persistCapturedBalls(ue.value),
+  findPendingRestoreBall: findPendingRestoreBall,
   shouldRestoreBall: function (e, t, n) {
-    return null !== te({ scriptId: e, elementId: n || null, classSelector: t, title: null })
+    return null !== findPendingRestoreBall({ scriptId: e, elementId: n || null, classSelector: t, title: null })
   },
-  markBallRestored: ae,
-  removeFromPendingRestore: ae,
+  markBallRestored: markBallRestored,
+  removeFromPendingRestore: markBallRestored,
   getPendingRestoreBalls: function () {
-    return J.value
+    return pendingRestoreBalls.value
   },
   extractFingerprint,
   generateBallIdFromFingerprint: function (e) {
@@ -869,9 +790,9 @@ const Ge = { class: "panel-icons" },
       }
       function filterPendingBall(fp, e) {
   const a = fp || extractFingerprint(e)
-  J.value = J.value.filter((t) => !fingerprintsMatch(t.fingerprint, a))
+  pendingRestoreBalls.value = pendingRestoreBalls.value.filter((t) => !fingerprintsMatch(t.fingerprint, a))
   try {
-    const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: JSON.parse(JSON.stringify(J.value)) }
+    const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: JSON.parse(JSON.stringify(pendingRestoreBalls.value)) }
     replaceVariables(o, { type: "script", script_id: getOwnScriptId() })
   } catch {}
 }
@@ -1927,8 +1848,8 @@ function bt() {
   mt = 0
 }
 function vt() {
-  if (0 === J.value.length) return
-  ;(K++, H || (H = !0))
+  if (0 === pendingRestoreBalls.value.length) return
+  beginRestoreBatch()
   const e = new Set(),
     t = (e) =>
       JSON.stringify({ scriptId: e.scriptId, elementId: e.elementId, classSelector: e.classSelector, title: e.title }),
@@ -1977,14 +1898,14 @@ function vt() {
     },
     a = (o) => {
       const docs = [window.parent.document, ...collectIframeDocs()],
-        i = J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint))
+        i = pendingRestoreBalls.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint))
       for (const e of i) for (const r of docs) if (n(e, r)) break
-      if (J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint)).length > 0)
+      if (pendingRestoreBalls.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint)).length > 0)
         if (o < 120) {
           const d = o <= 8 ? 400 : 1500
           setTimeout(() => a(o + 1), d)
-        } else Z(Ne.capturedBalls.value)
-      else Z(Ne.capturedBalls.value)
+        } else finishRestore(Ne.capturedBalls.value)
+      else finishRestore(Ne.capturedBalls.value)
     }
   setTimeout(() => a(1), 500)
 }
@@ -2052,7 +1973,7 @@ function ht() {
           i(l, e)
         }
       }
-    })(pt, At, Ne.findCapturedBallByFingerprint, Ne.updateCapturedBallElement, te, gt),
+    })(pt, At, Ne.findCapturedBallByFingerprint, Ne.updateCapturedBallElement, findPendingRestoreBall, gt),
     t = (function (e, t, n, a) {
       return (o) => {
         if (e.has(o) || o.hasAttribute("data-edge-panel-ignore")) return
@@ -2069,7 +1990,7 @@ function ht() {
           a(o, e)
         }
       }
-    })(At, Ne.isValidFingerprint, te, gt)
+    })(At, Ne.isValidFingerprint, findPendingRestoreBall, gt)
   ;(!(function (e) {
     if (Qe) return
     const t = window.parent.document
