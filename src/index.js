@@ -38,6 +38,7 @@ import {
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
 import { store } from "./store.js"
+import { installHostCaptureWatcher, disposeHostCaptureWatcher } from "./capture/host-watcher.js"
 import { ensureViewportFixStyle } from "./styles/viewport-fix.js"
 import { installInputEntry, cleanupInputEntry } from "./ui/input-entry.js"
 import {
@@ -97,7 +98,6 @@ import {
 setCapturedBallClickHandler((id, mode) => store.clickCapturedBall(id, mode))
 
 
-let Qe = null
 let He = null
 let Ze = null
 let edgePanelStyleHost = null
@@ -177,47 +177,7 @@ function ht() {
         }
       }
     })({ has: hasCapturedElement }, store.isValidFingerprint, findPendingRestoreBall, tryCaptureBall)
-  ;(!(function (e) {
-    if (Qe) return
-    const t = window.parent.document
-    ;((Qe = new MutationObserver((t) => {
-      for (const n of t)
-        if ("childList" === n.type)
-          for (const t of n.addedNodes)
-            if (t.nodeType === Node.ELEMENT_NODE) {
-              const n = t
-              // 跳过聊天正文区域：AI 流式输出时这里的 DOM 变更极其频繁，而悬浮球从不会渲染
-              // 在聊天消息内容里，提前排除可以避免每次打字机刷新都触发一整轮选择器扫描
-              if (n.closest && n.closest("#chat, .mes_text, .swipe_block, blockquote, pre, code")) continue
-              ;(e.checkAndCaptureNewFloatingBall(n),
-                e.checkAndCaptureFloatingBallByClass(n),
-                n.querySelectorAll("[script_id]").forEach((t) => {
-                  e.checkAndCaptureNewFloatingBall(t)
-                }),
-                n.querySelectorAll("[id]").forEach((t) => {
-                  e.checkAndCaptureNewFloatingBall(t)
-                }))
-              const a = [
-                ".note-save-selection-ball",
-                '[class*="floating"]',
-                '[class*="float"]',
-                '[class*="ball"]',
-                '[class*="fab"]',
-                '[class*="draggable"]',
-                ".ui-draggable",
-                '[style*="position: absolute"]',
-                '[style*="position:absolute"]',
-              ]
-              for (const t of a)
-                try {
-                  n.querySelectorAll(t).forEach((t) => {
-                    e.checkAndCaptureFloatingBallByClass(t)
-                  })
-                } catch {}
-            }
-    })),
-      Qe.observe(t.body, { childList: !0, subtree: !0 }))
-  })({ checkAndCaptureNewFloatingBall: e, checkAndCaptureFloatingBallByClass: t }),
+  ;(installHostCaptureWatcher({ checkAndCaptureNewFloatingBall: e, checkAndCaptureFloatingBallByClass: t }),
     (function (e) {
       resetPositionMemory()
       const t = resolveAnchorBottom(),
@@ -271,7 +231,7 @@ function ht() {
       ;(markRuntimeCleaned(),
         stopAutoScan(),
         endCapturePick(),
-        Qe && (Qe.disconnect(), (Qe = null)),
+        disposeHostCaptureWatcher(),
         He && (He.disconnect(), (He = null)),
         Ze && (Ze.disconnect(), (Ze = null)),
         teardownOwnershipRuntime(),
