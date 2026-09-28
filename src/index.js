@@ -22,6 +22,15 @@ import { settingsApi, setCaptureModeChangeHandler } from "./settings.js"
 import { themeApi } from "./theme.js"
 import { parentWin, parentDoc, runtimeId, runtimeOwner, runtimeKeys, currentFrameName } from "./runtime-identity.js"
 import {
+  updatePanelPosition,
+  resetPositionMemory,
+  resolveAnchorBottom,
+  resolveInputAnchor,
+  resolveSidebarAnchor,
+  edgePanelSchedulePositionRefresh,
+  edgePanelIsTextInputFocused,
+} from "./panel/geometry.js"
+import {
   setCapturedBallClickHandler,
   moveBallToContainer,
   restoreBall,
@@ -1082,7 +1091,6 @@ const Je = withScopeId(Re, [["__scopeId", "data-v-da7fb8b4"]])
 let Qe = null
 let He = null
 let Ze = null
-let et = null
 let edgePanelViewportResizeHandler = null,
   edgePanelViewportScrollHandler = null,
   edgePanelFocusHandler = null,
@@ -1231,98 +1239,9 @@ function edgePanelAttachHostActionWatchers() {
     })),
     edgePanelHostActionObserver.observe(parentDoc.body, { childList: !0, subtree: !0 }))
 }
-function tt() {
-  const e = window.parent.document,
-    t = e.querySelector("#sheld")
-  if (t) return t
-  const n = e.querySelector("#chat")
-  if (n) return n
-  const a = e.querySelector(".simplebar-content-wrapper")
-  return a || null
-}
-function nt() {
-  const e = window.parent.document,
-    t = e.querySelector("#top-settings-holder")
-  if (t) return t
-  const n = e.querySelector(".top-settings-holder")
-  return n || null
-}
-function at() {
-  const e = window.parent.document,
-    t = e.querySelector("#form_sheld")
-  if (t) return t
-  const n = e.querySelector("#send_form")
-  return n || null
-}
-function edgePanelViewportBounds() {
-  const e = parentWin,
-    t = e.visualViewport
-  if (t && t.width && t.height) {
-    const e = t.offsetLeft || 0,
-      n = t.offsetTop || 0
-    return { left: e, top: n, right: e + t.width, bottom: n + t.height, width: t.width, height: t.height }
-  }
-  return { left: 0, top: 0, right: e.innerWidth, bottom: e.innerHeight, width: e.innerWidth, height: e.innerHeight }
-}
-function edgePanelFocusedInputRect() {
-  try {
-    const e = parentDoc.activeElement
-    if (!e) return null
-    const t = String(e.tagName || "").toLowerCase(),
-      n = "textarea" === t || "input" === t || !!e.isContentEditable || !!e.closest?.('[contenteditable="true"]')
-    if (!n || "function" != typeof e.getBoundingClientRect) return null
-    const a = e.getBoundingClientRect()
-    return a && a.height && a.width ? a : null
-  } catch (e) {
-    return null
-  }
-}
-function edgePanelIsTextInputFocused() {
-  return !!edgePanelFocusedInputRect()
-}
-function edgePanelKeyboardOpen() {
-  try {
-    return !!(settingsApi.isMobile.value && edgePanelIsTextInputFocused())
-  } catch (e) {
-    return !1
-  }
-}
-function edgePanelClampPanelAnchor(e, t) {
-  const n = edgePanelViewportBounds(),
-    a = 8
-  if ("top" === e) return Math.max(t, n.top + a)
-  if ("bottom" === e) {
-    const o = at()
-    if (o) {
-      const t = o.getBoundingClientRect()
-      let i = t.top
-      if (edgePanelKeyboardOpen()) {
-        const l = edgePanelFocusedInputRect()
-        if (l && l.top > n.top + 120 && l.top < n.bottom - a) {
-          i = Math.min(i, l.top - a)
-        }
-      }
-      return Math.max(n.top + 28, i)
-    }
-    if (edgePanelKeyboardOpen()) {
-      let i = n.bottom - 96 - a,
-        l = edgePanelFocusedInputRect()
-      return (l && l.top > n.top + 120 && l.top < n.bottom - a && (i = Math.min(i, l.top - a)), Math.max(n.top + 28, i))
-    }
-    const e = n.bottom - a
-    return Math.max(n.top + 28, Math.min(t, e))
-  }
-  return t
-}
-function edgePanelPx(e) {
-  return `${Math.round(e)}px`
-}
 function edgePanelIsEdgeTabEvent(e) {
   const t = e?.target
   return !!(edgePanelIsElement(t) && edgePanelIsOwnedNode(t) && t.closest?.(".edge-tab,.panel-header"))
-}
-function edgePanelSchedulePositionRefresh(e) {
-  ;[0, 80, 220, 480, 820, 1500, 2600, 4000].forEach((t) => parentWin.setTimeout(() => ot(e, !0), t))
 }
 function edgePanelPreserveKeyboardToggle(e) {
   if (!settingsApi.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
@@ -1338,52 +1257,7 @@ function edgePanelSuppressGuardedClick(e) {
     edgePanelIsEdgeTabEvent(e) &&
     (e.preventDefault?.(), e.stopPropagation?.())
 }
-function ot(e, t = !1) {
-  const n = (function (e) {
-    const t = tt(),
-      n = nt(),
-      a = at(),
-      o = edgePanelViewportBounds()
-    switch (e) {
-      case "left":
-        return edgePanelPx(o.left)
-      case "right":
-        return edgePanelPx(o.right)
-      case "top":
-        if (n) {
-          const t = n.getBoundingClientRect()
-          return edgePanelPx(edgePanelClampPanelAnchor(e, t.bottom))
-        }
-        if (t) {
-          const n = t.getBoundingClientRect()
-          return edgePanelPx(edgePanelClampPanelAnchor(e, n.top))
-        }
-        // 锚点未就绪：不提交视口兜底值（避免面板跳到顶部/底部边缘），等锚点出现后由定时刷新校正
-        return null
-      case "bottom":
-        if (edgePanelKeyboardOpen()) return edgePanelPx(edgePanelClampPanelAnchor(e, o.bottom))
-        if (a) {
-          const t = a.getBoundingClientRect()
-          return edgePanelPx(edgePanelClampPanelAnchor(e, t.top))
-        }
-        if (t) {
-          const n = t.getBoundingClientRect()
-          return edgePanelPx(edgePanelClampPanelAnchor(e, n.bottom))
-        }
-        // 锚点未就绪：不提交视口兜底值（避免面板跳到顶部/底部边缘），等锚点出现后由定时刷新校正
-        return null
-      default:
-        if (t) {
-          const e = t.getBoundingClientRect()
-          return edgePanelPx(e.right)
-        }
-        return edgePanelPx(o.right)
-    }
-  })(settingsApi.effectivePosition.value)
-  if (null !== n) {
-    ;(t || et !== n) && ((et = n), e(n))
-  }
-}
+
 let rt = null,
   it = null,
   lt = null,
@@ -1815,39 +1689,39 @@ function ht() {
       Qe.observe(t.body, { childList: !0, subtree: !0 }))
   })({ checkAndCaptureNewFloatingBall: e, checkAndCaptureFloatingBallByClass: t }),
     (function (e) {
-      et = null
-      const t = tt(),
-        n = nt(),
-        a = at()
-      ;(ot(e, !0),
+      resetPositionMemory()
+      const t = resolveAnchorBottom(),
+        n = resolveInputAnchor(),
+        a = resolveSidebarAnchor()
+      ;(updatePanelPosition(e, !0),
         (He = new ResizeObserver(() => {
-          ot(e)
+          updatePanelPosition(e)
         })),
         t && He.observe(t),
         n && He.observe(n),
         a && He.observe(a),
-        $(window.parent).on("resize.edgePanel", () => ot(e)))
+        $(window.parent).on("resize.edgePanel", () => updatePanelPosition(e)))
       const o = window.parent.document
       let r = t,
         i = n,
         l = a
       ;((Ze = new MutationObserver(() => {
-        const t = tt(),
-          n = nt(),
-          a = at()
+        const t = resolveAnchorBottom(),
+          n = resolveInputAnchor(),
+          a = resolveSidebarAnchor()
         let o = !1
         ;(t !== r && ((r = t), t && He && He.observe(t), (o = !0)),
           n !== i && ((i = n), n && He && He.observe(n), (o = !0)),
           a !== l && ((l = a), a && He && He.observe(a), (o = !0)),
-          o && ot(e, !0))
+          o && updatePanelPosition(e, !0))
       })),
         Ze.observe(o.body, { childList: !0, subtree: !0 }))
     })(Ne.setPanelLeftPosition),
     (function (e) {
       const t = parentWin.visualViewport
       if (t) {
-        ;((edgePanelViewportResizeHandler = () => ot(e, !0)),
-          (edgePanelViewportScrollHandler = () => ot(e, !0)),
+        ;((edgePanelViewportResizeHandler = () => updatePanelPosition(e, !0)),
+          (edgePanelViewportScrollHandler = () => updatePanelPosition(e, !0)),
           t.addEventListener("resize", edgePanelViewportResizeHandler, { passive: !0 }),
           t.addEventListener("scroll", edgePanelViewportScrollHandler, { passive: !0 }))
       }
@@ -1870,7 +1744,7 @@ function ht() {
         parentDoc.addEventListener("click", edgePanelKeyboardClickHandler, !0))
     })(),
     (0, o.watch)(settingsApi.effectivePosition, () => {
-      ot(Ne.setPanelLeftPosition, !0)
+      updatePanelPosition(Ne.setPanelLeftPosition, !0)
       try {
         window.setTimeout(() => {
           try {
@@ -1922,7 +1796,7 @@ function ht() {
         (edgePanelKeyboardPointerHandler = null),
         (edgePanelKeyboardClickHandler = null),
         (edgePanelKeyboardToggleGuardUntil = 0),
-        (et = null),
+        resetPositionMemory(),
         st && (clearInterval(st), (st = null)),
         Ne.releaseAllBallsWithoutSaving(),
         At.clear(),
@@ -1941,7 +1815,7 @@ function ht() {
     edgePanelAttachFrameDetachWatcher(edgePanelRuntimeCleanup),
     edgePanelAttachHostActionWatchers(),
     edgePanelStartArtifactMonitor(() => {
-      ot(Ne.setPanelLeftPosition, !0)
+      updatePanelPosition(Ne.setPanelLeftPosition, !0)
     }),
     edgePanelSchedulePositionRefresh(Ne.setPanelLeftPosition),
     $(window).on("unload.edgePanelLifecycle", edgePanelRuntimeCleanup),
