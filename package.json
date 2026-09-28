@@ -1,0 +1,14 @@
+{
+  "name": "floating-ball-storage",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SillyTavern 酒馆助手脚本：悬浮球收纳（重构版）",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

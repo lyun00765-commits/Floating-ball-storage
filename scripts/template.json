@@ -1,0 +1,16 @@
+{
+  "type": "script",
+  "enabled": true,
+  "name": "🎈悬浮球收纳 @JessLightsEvrywhr @路过的无聊小咸鱼",
+  "id": "5abe7f92-e52e-477f-b657-4b58fea6682d",
+  "info": "致谢 @JessLightsEvrywhr 和 @路过的无聊小咸鱼，本脚本基于二位的作品重构而成。\n\n## 功能简介\n- 🎈 自动收纳页面悬浮球，统一管理，告别杂乱\n- 📌 四向贴边定位（左/右/上/下），桌面端和手机端均完美贴边\n- 📦 设置面板独立弹出，不占用面板空间\n- 🎛️ 三种入口模式：边缘拉手 / 输入框按钮 / 两者都显示\n- 🎨 自动跟随酒馆主题配色\n\n## 作者\n陆韵\n\n## 许可\n二改随意，禁止商业化用途\n## 版本\n重构版 v1.0\n\n## GitHub\nhttps://github.com/lyun00765-commits/Floating-ball-storage",
+  "button": {
+    "enabled": true,
+    "buttons": []
+  },
+  "data": {},
+  "export_with": {
+    "data": false,
+    "button": true
+  }
+}
