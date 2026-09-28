@@ -37,7 +37,22 @@ import {
   markRuntimeCleaned,
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
-import { isFloatingBallCandidate } from "./capture/candidate.js"
+import {
+  tryCaptureBall,
+  scanOnce,
+  startAutoScan,
+  stopAutoScan,
+  restorePendingBalls,
+  syncAutoScan,
+  setScanDeps,
+  forgetCapturedElement,
+  clearCapturedElements,
+  registerPlugin,
+  unregisterPlugin,
+  hasCapturedElement,
+  capturedElementEntries,
+  getScanScriptId,
+} from "./capture/scanner.js"
 import { panelComponent, setViewDeps } from "./panel/view.js"
 injectStyles()
 import {
@@ -196,7 +211,7 @@ const Ne = {
     if ("root-open" === t) {
       const t = () => {
         if (!a.isConnected || ue.value[e]) return
-        ;(a.removeAttribute("data-edge-panel-ignore"), gt(a, { order: r }))
+        ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
       }
       ;(a.setAttribute("data-edge-panel-ignore", "1"), this.removeCapturedBall(e))
       const n =
@@ -305,7 +320,7 @@ const Ne = {
             (clearInterval(n),
             setTimeout(() => {
               if (!a.isConnected || ue.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), gt(a, { order: r }))
+              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
             }, 120))
       }, 250)
       setTimeout(() => clearInterval(n), 15000)
@@ -315,7 +330,7 @@ const Ne = {
             a.removeEventListener("touchend", cleanup, !0),
             setTimeout(() => {
               if (!a.isConnected || ue.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), gt(a, { order: r }))
+              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
             }, 120))
         }
         ;(a.addEventListener("click", cleanup, !0), a.addEventListener("touchend", cleanup, !0))
@@ -356,8 +371,8 @@ const Ne = {
       }
       ;((ue.value = { ...ue.value }), persistCapturedBalls(ue.value))
     }
-    for (const [t, n] of ct) {
-      ;(t.isConnected && ue.value[n]) || ct.delete(t)
+    for (const [t, n] of capturedElementEntries()) {
+      ;(t.isConnected && ue.value[n]) || forgetCapturedElement(t)
     }
   },
   onBallReleased: function (e) {
@@ -477,207 +492,7 @@ let Ze = null
 let edgePanelStyleHost = null
 let rt = null,
   it = null,
-  lt = null,
-  glt = null,
-  st = null,
-  mt = 0 // 全量兜底扫描的节流计数器（见 Ct() 中的用法）
-const At = new Set(),
-  ct = new Map(),
-  pt = (function () {
-    try {
-      return getScriptId()
-    } catch {
-      return "集成控件"
-    }
-  })()
-function dt(e) {
-  Ne.registerPlugin(e)
-}
-function ut(e) {
-  Ne.unregisterPlugin(e)
-}
-function gt(e, t) {
-  if (e.hasAttribute("data-edge-panel-ignore")) return !1
-  if (At.has(e)) return !1
-  const n = Ne.extractFingerprint(e)
-  if (n.scriptId === pt) return !1
-  if (!Ne.isValidFingerprint(n)) return !1
-  if (Ne.isFingerprintCaptured(n)) {
-    const t = Ne.generateBallIdFromFingerprint(n)
-    return (Ne.updateCapturedBallElement(t, e), At.add(e), !1)
-  }
-  At.add(e)
-  const a = window.parent.getComputedStyle(e),
-    o = a.display || "flex",
-    r = Ne.generateBallIdFromFingerprint(n),
-    s = {
-      top: a.top,
-      left: a.left,
-      right: a.right,
-      bottom: a.bottom,
-      positionValue: a.position,
-      opacityValue: a.opacity,
-      visibilityValue: a.visibility,
-      pointerEventsValue: a.pointerEvents,
-    },
-    A = e.style.cssText,
-    c = {
-      id: r,
-      fingerprint: n,
-      element: e,
-      icon: getElementIcon(e),
-      name: getElementName(e),
-      originalPosition: s,
-      originalDisplay: o,
-      originalParent: e.parentElement,
-      originalNextSibling: e.nextSibling,
-      originalStyle: A,
-      order: t?.order,
-    }
-  return (ct.set(e, r), Ne.addCapturedBall(c), removeReleased(n), !0)
-}
-/** 设置变化 → 联动自动扫描的启停（原先挂在 settingsApi 上，现由装配层持有） */
-function syncAutoScan() {
-  if ("auto" === settingsApi.getCaptureMode() && Ne.autoCaptureEnabled.value) {
-    if (!lt) ft()
-  } else if (lt) bt()
-}
-setCaptureModeChangeHandler(syncAutoScan)
-
-function Ct(forceFullScan) {
-  if (!Ne.autoCaptureEnabled.value) return
-  const selectors = [
-      "[script_id]",
-      '[class*="ball"]',
-      '[class*="floating"]',
-      '[class*="float"]',
-      '[class*="fab"]',
-      '[class*="draggable"]',
-      ".ui-draggable",
-      '[style*="position: fixed"]',
-      '[style*="position:fixed"]',
-      '[style*="position: absolute"]',
-      '[style*="position:absolute"]',
-    ],
-    candidates = new Set(),
-    docs = [window.parent.document, ...collectIframeDocs()]
-  for (const doc of docs)
-    for (const sel of selectors)
-      try {
-        doc.querySelectorAll(sel).forEach((el) => candidates.add(el))
-      } catch {}
-
-  // 兜底全量扫描：只收集"计算样式为 fixed"的元素（覆盖靠 CSS class 而非行内样式实现悬浮
-  // 定位的情况）。不收集 absolute 元素，因为 absolute 在普通布局中极其常见，纳入兜底扫描
-  // 会显著增加误捕概率；已知的 absolute 悬浮球仍可被上面的选择器命中。
-  // 这一步比较费性能，不必每次定时器触发（每 2 秒）都跑一次；但也不能只跑一次，否则页面
-  // 加载完成之后才动态出现、且没有匹配到上面任何选择器的悬浮球会永远扫不到。
-  // 这里用计数器把它节流到大约每 6 个 tick（配合 2 秒的定时器约等于 12 秒）跑一次。
-  if (forceFullScan || mt <= 0) {
-    docs.forEach((doc) => {
-      try {
-        let scanRoot
-        try {
-          scanRoot = doc.querySelectorAll("button:not(#chat, #chat *), div:not(#chat, #chat *), span:not(#chat, #chat *), a:not(#chat, #chat *)")
-        } catch {
-          scanRoot = doc.querySelectorAll("button, div, span, a")
-        }
-        scanRoot.forEach((el) => {
-          try {
-            if ("fixed" === window.parent.getComputedStyle(el).position) candidates.add(el)
-          } catch {}
-        })
-      } catch {}
-    })
-    mt = 6
-  } else mt--
-
-  const passed = []
-  candidates.forEach((el) => {
-    if (!At.has(el) && isFloatingBallCandidate(el, pt)) passed.push(el)
-  })
-  // 同一条 DOM 包含链上可能同时命中多个候选（例如外层球容器 + 内部又是 absolute
-  // 定位的图标包装层都各自达到了打分阈值）。这种情况下只保留"最外层"的一个再去
-  // 捕获，避免同一个悬浮球被拆成两条记录（球容器一条、内部图标又单独一条）。
-  const toCapture = passed.filter((el) => !passed.some((other) => other !== el && other.contains(el)))
-  toCapture.forEach((el) => gt(el))
-}
-function ft() {
-  Ne.autoCaptureEnabled.value &&
-    "auto" === settingsApi.getCaptureMode() &&
-    (mt = 0,
-      (lt = setInterval(() => {
-        ;(window.parent.document.hidden || document.hidden) || Ct()
-      }, 2e3)),
-      (glt = setTimeout(() => Ct(!0), 300)))
-}
-function bt() {
-  glt && clearTimeout(glt)
-  ;(lt && (clearInterval(lt), (lt = null)), (glt = null))
-  mt = 0
-}
-function vt() {
-  if (0 === pendingRestoreBalls.value.length) return
-  beginRestoreBatch()
-  const e = new Set(),
-    t = (e) =>
-      JSON.stringify({ scriptId: e.scriptId, elementId: e.elementId, classSelector: e.classSelector, title: e.title }),
-    n = (n, a) => {
-      const o = t(n.fingerprint)
-      if (e.has(o)) return !0
-      const i = { originalPosition: n.originalPosition, originalStyle: n.originalStyle, order: n.order }
-      if (n.fingerprint.scriptId) {
-        if (n.fingerprint.scriptId === pt) return (e.add(o), !0)
-        const t = a.querySelectorAll(`[script_id="${n.fingerprint.scriptId}"]`)
-        for (const n of t) {
-          const t = n
-          if (isFloatingBoxElement(t, !0) && gt(t, i)) return (e.add(o), !0)
-        }
-        return !1
-      }
-      if (n.fingerprint.elementId) {
-        try {
-          const t = a.getElementById(n.fingerprint.elementId)
-          if (t) {
-            if (isFloatingBoxElement(t, !0) && gt(t, i)) return (e.add(o), !0)
-          }
-        } catch {}
-        return !1
-      }
-      let l = ""
-      if (
-        (n.fingerprint.classSelector && n.fingerprint.title
-          ? (l = `${n.fingerprint.classSelector}[title="${n.fingerprint.title}"]`)
-          : n.fingerprint.classSelector
-            ? (l = n.fingerprint.classSelector)
-            : n.fingerprint.title && (l = `[title="${n.fingerprint.title}"]`),
-        l)
-      )
-        try {
-          const t = a.querySelectorAll(l)
-          for (const a of t) {
-            const t = a
-            if (isFloatingBoxElement(t, !0)) {
-              const a = Ne.extractFingerprint(t)
-              if (Ne.fingerprintsMatch(a, n.fingerprint) && gt(t, i)) return (e.add(o), !0)
-            }
-          }
-        } catch {}
-      return !1
-    },
-    a = (o) => {
-      const docs = [window.parent.document, ...collectIframeDocs()],
-        i = pendingRestoreBalls.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint))
-      for (const e of i) for (const r of docs) if (n(e, r)) break
-      if (pendingRestoreBalls.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint)).length > 0)
-        if (o < 120) {
-          const d = o <= 8 ? 400 : 1500
-          setTimeout(() => a(o + 1), d)
-        } else finishRestore(Ne.capturedBalls.value)
-      else finishRestore(Ne.capturedBalls.value)
-    }
-  setTimeout(() => a(1), 500)
-}
+  st = null
 function ht() {
   setOwnershipDeps({
     styleHost: edgePanelStyleHost,
@@ -688,9 +503,10 @@ function ht() {
     togglePanel: () => Ne.togglePanel(),
     getPanelPositionTarget: () => Ne.setPanelLeftPosition,
   })
+  setScanDeps({ store: Ne })
   setViewDeps({
     store: Ne,
-    triggerScan: (force) => Ct(force),
+    triggerScan: (force) => scanOnce(force),
   })
 
 
@@ -737,7 +553,7 @@ function ht() {
         }),
         parentDoc.head.appendChild(edgePanelStyleHost))
     })(),
-    ft(),
+    startAutoScan(),
     syncAutoScan(),
     st ||
       (st = setInterval(() => {
@@ -757,7 +573,7 @@ function ht() {
           i(l, e)
         }
       }
-    })(pt, At, Ne.findCapturedBallByFingerprint, Ne.updateCapturedBallElement, findPendingRestoreBall, gt),
+    })(getScanScriptId(), { has: hasCapturedElement }, Ne.findCapturedBallByFingerprint, Ne.updateCapturedBallElement, findPendingRestoreBall, tryCaptureBall),
     t = (function (e, t, n, a) {
       return (o) => {
         if (e.has(o) || o.hasAttribute("data-edge-panel-ignore")) return
@@ -774,7 +590,7 @@ function ht() {
           a(o, e)
         }
       }
-    })(At, Ne.isValidFingerprint, findPendingRestoreBall, gt)
+    })({ has: hasCapturedElement }, Ne.isValidFingerprint, findPendingRestoreBall, tryCaptureBall)
   ;(!(function (e) {
     if (Qe) return
     const t = window.parent.document
@@ -857,17 +673,17 @@ function ht() {
         }, 40)
       } catch (err) {}
     }),
-    vt(),
+    restorePendingBalls(),
     Ne.onBallReleased((e, t, n) => {
-      n && (At.delete(n), ct.delete(n))
+      n && forgetCapturedElement(n)
     }),
     (0, o.watch)(Ne.isCaptureModeActive, (e, t) => {
-      e && !t ? beginCapturePick(pt, gt, () => Ne.exitCaptureMode()) : !e && t && endCapturePick()
+      e && !t ? beginCapturePick(getScanScriptId(), tryCaptureBall, () => Ne.exitCaptureMode()) : !e && t && endCapturePick()
     }))
   const n = () => {
       if (isRuntimeCleaned()) return
       ;(markRuntimeCleaned(),
-        bt(),
+        stopAutoScan(),
         endCapturePick(),
         Qe && (Qe.disconnect(), (Qe = null)),
         He && (He.disconnect(), (He = null)),
@@ -880,8 +696,7 @@ function ht() {
         resetPositionMemory(),
         st && (clearInterval(st), (st = null)),
         Ne.releaseAllBallsWithoutSaving(),
-        At.clear(),
-        ct.clear(),
+        clearCapturedElements(),
         rt && (rt.unmount(), (rt = null)),
         removeOwnedArtifacts(),
         clearRuntimeRegistration())
@@ -1618,11 +1433,11 @@ function bindEdgeTabMenu() {
 })()
 
 export {
-  gt as captureElement,
+  tryCaptureBall as captureElement,
   Ne as pluginStore,
-  dt as registerPlugin,
-  Ct as scanFloatingBalls,
-  ft as startBallScanning,
-  bt as stopBallScanning,
-  ut as unregisterPlugin,
+  registerPlugin,
+  scanOnce as scanFloatingBalls,
+  startAutoScan as startBallScanning,
+  stopAutoScan as stopBallScanning,
+  unregisterPlugin,
 }

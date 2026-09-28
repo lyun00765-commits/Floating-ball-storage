@@ -1,0 +1,12 @@
+{
+  "base": "bd1cb48",
+  "file": "src/capture/scanner.js",
+  "rename": {
+    "gt": "tryCaptureBall", "Ct": "scanOnce", "ft": "startAutoScan", "bt": "stopAutoScan",
+    "vt": "restorePendingBalls", "dt": "registerPlugin", "ut": "unregisterPlugin",
+    "At": "capturedElements", "ct": "elementToBallId", "pt": "scriptId",
+    "lt": "scanTimer", "glt": "immediateScanTimer", "mt": "scanThrottle"
+  },
+  "expect": {},
+  "notes": "含依赖注入（Ne → deps.store）与状态私有化，逐字节比对不适用。用 token 级核对：/workspace/3_sandbox/verify-scanner.mjs，基线区间 1419 tokens vs scanner 1419 tokens，一致。"
+}
