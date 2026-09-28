@@ -1,0 +1,11 @@
+{
+  "base": "5296a61",
+  "file": "src/capture/manual.js",
+  "rename": {},
+  "expect": {
+    "isManualCaptureCandidate": "isManualCaptureCandidate",
+    "captureAtPoint": "captureAtPoint",
+    "beginCapturePick": "beginCapturePick",
+    "endCapturePick": "endCapturePick"
+  }
+}
