@@ -20,17 +20,7 @@ import { isFloatingBallCandidate } from './candidate.js'
 import { collectIframeDocs, isFloatingBoxElement } from '../core/dom.js'
 import { getElementIcon, getElementName } from '../core/element-info.js'
 import { isReleasedFingerprint, removeReleased } from '../persist/released.js'
-import {
-  pendingRestoreBalls,
-  beginRestoreBatch,
-  finishRestore,
-  findPendingRestoreBall,
-  markBallRestored,
-  isRestoreInProgress,
-} from '../persist/saved-balls.js'
-import { containsBall } from '../panel/pagination.js'
-import { insertBallBefore, moveBallToContainer, restoreBall } from '../panel/takeover.js'
-
+import { pendingRestoreBalls, beginRestoreBatch, finishRestore } from '../persist/saved-balls.js'
 /** 扫描循环定时器 */
 let scanTimer = null
 /** 启动后立即跑一次全量的定时器 */

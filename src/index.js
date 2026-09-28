@@ -1,26 +1,10 @@
 import { injectStyles } from "./styles/inject.js"
-import { extractFingerprint, fingerprintsMatch, isValidFingerprint, getClassSelector } from "./core/fingerprint.js"
-import { withAlpha, darken } from "./core/color.js"
-import {
-  isFloatingBoxElement,
-  collectIframeDocs,
-} from "./core/dom.js"
-import { getElementIcon, getElementName } from "./core/element-info.js"
-import { getOwnScriptId } from "./core/platform.js"
+import { extractFingerprint } from "./core/fingerprint.js"
+import { isFloatingBoxElement } from "./core/dom.js"
 import { beginCapturePick, endCapturePick } from "./capture/manual.js"
-import {
-  pendingRestoreBalls,
-  finishRestore,
-  persistCapturedBalls,
-  findPendingRestoreBall,
-  markBallRestored,
-  initPersistence,
-  beginRestoreBatch,
-  isRestoreInProgress,
-} from "./persist/saved-balls.js"
-import { settingsApi, setCaptureModeChangeHandler } from "./settings.js"
-import { themeApi } from "./theme.js"
-import { parentWin, parentDoc, runtimeId, runtimeOwner, runtimeKeys, currentFrameName } from "./runtime-identity.js"
+import { findPendingRestoreBall } from "./persist/saved-balls.js"
+import { settingsApi } from "./settings.js"
+import { parentDoc, runtimeId } from "./runtime-identity.js"
 import {
   markOwnedNode,
   removeOwnedArtifacts,
@@ -29,8 +13,6 @@ import {
   clearRuntimeRegistration,
   watchFrameDetachment,
   startArtifactMonitor,
-  isElement,
-  isOwnedNode,
   attachHostActionWatchers,
   setOwnershipDeps,
   isRuntimeCleaned,
@@ -55,7 +37,6 @@ import {
   registerPlugin,
   unregisterPlugin,
   hasCapturedElement,
-  capturedElementEntries,
   getScanScriptId,
 } from "./capture/scanner.js"
 import { panelComponent, setViewDeps } from "./panel/view.js"
@@ -66,35 +47,9 @@ import {
   teardownViewportGuards,
   setViewportGuardDeps,
 } from "./panel/viewport-guards.js"
-import {
-  updatePanelPosition,
-  resetPositionMemory,
-  resolveAnchorBottom,
-  resolveInputAnchor,
-  resolveSidebarAnchor,
-  schedulePositionRefresh,
-  isTextInputFocused,
-} from "./panel/geometry.js"
-import {
-  setCapturedBallClickHandler,
-  moveBallToContainer,
-  restoreBall,
-  insertBallBefore,
-  hideBall,
-} from "./panel/takeover.js"
-import {
-  isReleasedFingerprint,
-  addReleased,
-  removeReleased,
-} from "./persist/released.js"
-import {
-  setBallContainer,
-  reorient,
-  goPage,
-  getPageState,
-  getContainer,
-  containsBall,
-} from "./panel/pagination.js"
+import { updatePanelPosition, resetPositionMemory, schedulePositionRefresh } from "./panel/geometry.js"
+import { setCapturedBallClickHandler } from "./panel/takeover.js"
+import { reorient } from "./panel/pagination.js"
 
 setCapturedBallClickHandler((id, mode) => store.clickCapturedBall(id, mode))
 
