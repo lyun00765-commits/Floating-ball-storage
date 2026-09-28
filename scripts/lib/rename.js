@@ -52,7 +52,16 @@ export function renameSymbols(src, pairs) {
   return { code, counts, missing }
 }
 
-/** 按名字抓取模块顶层的函数声明文本（含 `export` 前缀的也识别） */
+/**
+ * 按名字抓取模块顶层的函数文本（含 `export` 前缀的也识别）。
+ *
+ * 支持两种形态，且两者抓到的都是「初始化的表达式」语义一致的部分：
+ * - `function foo() {}`（FunctionDeclaration）
+ * - `const foo = () => {}` / `const foo = function () {}`（顶层 const 的箭头/函数表达式）
+ *
+ * 后者的写法在搬运时可能从 `foo = ...`（const 链）变为 `const foo = ...`，
+ * 因此比对时会剥掉 `const`/`export const` 前缀，只比表达式本体。
+ */
 export function grabFunctions(src, names) {
   const ast = parse(src, { ecmaVersion: 'latest', sourceType: 'module', range: true })
   const out = {}
@@ -60,6 +69,14 @@ export function grabFunctions(src, names) {
     const decl = node.type === 'ExportNamedDeclaration' ? node.declaration : node
     if (decl?.type === 'FunctionDeclaration' && names.includes(decl.id.name)) {
       out[decl.id.name] = src.slice(decl.range[0], decl.range[1])
+      continue
+    }
+    if (decl?.type !== 'VariableDeclaration') continue
+    for (const d of decl.declarations) {
+      if (!names.includes(d.id.name)) continue
+      // 只接受函数/箭头函数初值；其它初值属于普通变量，不参与函数比对
+      if (d.init?.type !== 'ArrowFunctionExpression' && d.init?.type !== 'FunctionExpression') continue
+      out[d.id.name] = src.slice(d.init.range[0], d.init.range[1])
     }
   }
   return out

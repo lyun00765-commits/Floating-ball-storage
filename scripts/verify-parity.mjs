@@ -46,24 +46,37 @@ const newFns = grabFunctions(newSrc, names)
 
 let bad = 0
 let ok = 0
+/** 逐行比较：允许整体缩进差异（搬运时对象方法会整体减 2 格），其余必须完全一致 */
+function compareLines(oldText, newText) {
+  const a = oldText.split('\n').map((l) => l.trim())
+  const b = newText.split('\n').map((l) => l.trim())
+  const mismatch = []
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i]
+    const y = b[i]
+    // 允许基线结尾的 `},`（const 链）对应新模块的 `}`
+    const looselySame = (x ?? '').replace(/,$/, '') === (y ?? '').replace(/,$/, '')
+    if (x !== y && !looselySame) mismatch.push(i)
+  }
+  return mismatch
+}
+
 for (const name of names) {
   const oldText = oldFns[name]
   const newText = newFns[name]
   if (!oldText) { console.error(`✗ 基线中找不到函数 ${name}（重命名后应为该名）`); bad++; continue }
   if (!newText) { console.error(`✗ ${spec.file} 中找不到函数 ${name}`); bad++; continue }
-  if (oldText !== newText) {
+  const mismatch = compareLines(oldText, newText)
+  if (mismatch.length) {
     bad++
-    console.error(`✗ ${name} 函数体不一致`)
+    console.error(`✗ ${name} 函数体不一致（${mismatch.length} 处）`)
     const a = oldText.split('\n')
     const b = newText.split('\n')
-    for (let i = 0; i < Math.max(a.length, b.length); i++) {
-      if (a[i] !== b[i]) {
-        console.error(`   首个差异在第 ${i + 1} 行\n   基线: ${a[i]}\n   现在: ${b[i]}`)
-        break
-      }
+    for (const i of mismatch.slice(0, 5)) {
+      console.error(`   差异在第 ${i + 1} 行\n   基线: ${a[i]}\n   现在: ${b[i]}`)
     }
   } else ok++
 }
 
-console.log(`${bad === 0 ? '✓' : '✗'} ${spec.file}: ${ok}/${names.length} 个函数与基线逐字节一致`)
+console.log(`${bad === 0 ? '✓' : '✗'} ${spec.file}: ${ok}/${names.length} 个函数与基线一致`)
 process.exitCode = bad ? 1 : 0
