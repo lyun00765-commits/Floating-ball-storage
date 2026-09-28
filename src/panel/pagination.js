@@ -41,8 +41,13 @@ function createPage() {
 export function appendBall(el, before) {
   if (!pageLayer) return
   if (before && before.parentNode && pageLayer.contains(before)) {
-    before.parentNode.insertBefore(el, before)
-    rebuild()
+    // 插到某个已有球之前（恢复已收纳球时按 order 维持顺序走这条路径）。
+    // 这会打破分页：目标页可能变成 4 个，而它后面的球也没能往前补位。
+    // 因此超容时必须重新打包；只在超容时做，避免恢复大量球时反复重排。
+    const targetPage = before.parentNode
+    targetPage.insertBefore(el, before)
+    if (targetPage.children.length > perPage()) compact()
+    else rebuild()
     return
   }
   let page = pageLayer.children.length ? pageLayer.children[pageLayer.children.length - 1] : null

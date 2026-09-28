@@ -41,7 +41,14 @@
         "find": "    pageLayer.children[k].style.flexDirection = horiz ? \"row\" : \"column\"\n  }\n}",
         "replace": "    pageLayer.children[k].style.flexDirection = horiz ? \"row\" : \"column\"\n  }\n  // 每页容量取决于当前布局，切换贴边方向后必须按新容量**重新分页**：\n  // 否则会沿用切换前的页划分（例如水平布局切成垂直后，仍是一页塞 4 个）。\n  compact()\n}"
       }
+    ],
+    "appendBall": [
+      {
+        "desc": "【行为修正】带 before 的插入（刷新后恢复已收纳球的路径）原先只 rebuild 不重新分页，导致恢复 4 个球后挤成一页；改为该页超容时重新打包",
+        "find": "    before.parentNode.insertBefore(el, before)\n    rebuild()\n    return",
+        "replace": "    // 插到某个已有球之前（恢复已收纳球时按 order 维持顺序走这条路径）。\n    // 这会打破分页：目标页可能变成 4 个，而它后面的球也没能往前补位。\n    // 因此超容时必须重新打包；只在超容时做，避免恢复大量球时反复重排。\n    const targetPage = before.parentNode\n    targetPage.insertBefore(el, before)\n    if (targetPage.children.length > perPage()) compact()\n    else rebuild()\n    return"
+      }
     ]
   },
-  "notes": "PER_PAGE 两个方向统一为 3（规格只管函数体，常量不在比对范围）；reorient 增加重新分页，已登记 rewrites。"
+  "notes": "PER_PAGE 两个方向统一为 3（规格只管函数体，常量不在比对范围）；reorient 增加重新分页，已登记 rewrites。 appendBall 的 before 分支增加超容重排，已登记 rewrites。"
 }

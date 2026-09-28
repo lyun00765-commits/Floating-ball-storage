@@ -122,3 +122,34 @@ test('页数变少时当前页码被拉回有效范围', async () => {
   assert.equal(e.p.getPageState().index, 0, '页码应被拉回 0')
   e.restore()
 })
+
+test('带 before 的插入（恢复路径）仍遵守每页容量（回归）', async () => {
+  const e = await envWithBalls(3) // 先正常放满一页：3 个
+  assert.equal(e.p.getPageState().count, 1)
+
+  // 模拟刷新后的恢复：球带 order，会走 appendBall(el, before) 这条路径，
+  // 即「插到某个已有球前面」而不是「追加到末尾」。
+  const b4 = makeBall(e.doc, 'ball-4')
+  e.p.appendBall(b4, e.balls[0])
+
+  const layer = e.container.children[0]
+  assert.equal(e.p.getPageState().count, 2, '插入后应分成两页')
+  assert.equal(layer.children.length, 2, '页元素数量')
+  assert.equal(layer.children[0].children.length, 3, '第 1 页仍是 3 个（不超容）')
+  assert.equal(layer.children[1].children.length, 1, '第 2 页 1 个')
+  e.restore()
+})
+
+test('插入到中间时保持顺序且不超容', async () => {
+  const e = await envWithBalls(3)
+  // 插到第 2 个球之前
+  const b4 = makeBall(e.doc, 'ball-4')
+  e.p.appendBall(b4, e.balls[1])
+
+  const ids = []
+  const layer = e.container.children[0]
+  for (const page of layer.children) for (const b of page.children) ids.push(b.getAttribute('data-edge-ball-id'))
+  assert.deepEqual(ids, ['ball-1', 'ball-4', 'ball-2', 'ball-3'], '顺序应保持')
+  assert.equal(e.p.getPageState().count, 2, '4 个球应分两页')
+  e.restore()
+})
