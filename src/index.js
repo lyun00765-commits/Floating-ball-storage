@@ -38,7 +38,7 @@ import {
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
 import { isFloatingBallCandidate } from "./capture/candidate.js"
-import { panelComponent } from "./panel/view.js"
+import { panelComponent, setViewDeps } from "./panel/view.js"
 injectStyles()
 import {
   setupVisualViewportGuards,
@@ -687,6 +687,10 @@ function ht() {
   setViewportGuardDeps({
     togglePanel: () => Ne.togglePanel(),
     getPanelPositionTarget: () => Ne.setPanelLeftPosition,
+  })
+  setViewDeps({
+    store: Ne,
+    triggerScan: (force) => Ct(force),
   })
 
 
