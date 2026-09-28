@@ -1,0 +1,10 @@
+{
+  "base": "350a6c7",
+  "file": "src/theme.js",
+  "rename": {
+    "Ie": "debounceSource", "Me": "themeColors", "qe": "themeObserver",
+    "_e": "updateThemeColors", "Ve": "themeApi"
+  },
+  "expect": { "updateThemeColors": "updateThemeColors" },
+  "notes": "对象方法与观察器，无法逐字节比对；由 /workspace/3_sandbox/verify-theme.mjs 归一化核对（116 行 vs 116 行，仅 1 处 const 链收尾差异）。"
+}
