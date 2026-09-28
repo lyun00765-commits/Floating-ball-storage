@@ -148,7 +148,6 @@ export const store = {
     const n = capturedBalls.value[e]
     if (!n) return
     const a = n.element,
-      o = n.element,
       r = n.order,
       i = window.parent || window,
       ballName = n.name
@@ -241,60 +240,6 @@ export const store = {
       notify.info(`已在原位置打开: ${ballName}`)
       return
     }
-    const l = (e, t, n = {}) => {
-      try {
-        const a = i[t] || window[t]
-        a && e.dispatchEvent(new a(n.type, { bubbles: !0, cancelable: !0, view: i, ...n }))
-      } catch {}
-    }
-    const s = () => {
-      let wasExpanded = !1
-      const ballId = e
-      const t = () => {
-        const e = String(a.getAttribute("aria-expanded") || "").toLowerCase(),
-          t = `${a.className || ""} ${o.className || ""}`.toLowerCase()
-        return "true" === e || /(^|\s)(active|open|opened|expanded|selected)(\s|$)/.test(t)
-      }
-      const n = setInterval(() => {
-        if (!a.isConnected || capturedBalls.value[ballId]) return void clearInterval(n)
-        const o = t()
-        o
-          ? (wasExpanded = !0)
-          : wasExpanded &&
-            (clearInterval(n),
-            setTimeout(() => {
-              if (!a.isConnected || capturedBalls.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
-            }, 120))
-      }, 250)
-      setTimeout(() => clearInterval(n), 15000)
-      setTimeout(() => {
-        const cleanup = () => {
-          ;(a.removeEventListener("click", cleanup, !0),
-            a.removeEventListener("touchend", cleanup, !0),
-            setTimeout(() => {
-              if (!a.isConnected || capturedBalls.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
-            }, 120))
-        }
-        ;(a.addEventListener("click", cleanup, !0), a.addEventListener("touchend", cleanup, !0))
-      }, 400)
-    }
-    ;(a.setAttribute("data-edge-panel-ignore", "1"),
-      this.removeCapturedBall(e),
-      setTimeout(() => {
-        ;(l(Vue, "PointerEvent", { type: "pointerdown", button: 0, buttons: 1, pointerType: "mouse", isPrimary: !0 }),
-          l(Vue, "MouseEvent", { type: "mousedown", button: 0, buttons: 1 }),
-          l(Vue, "PointerEvent", { type: "pointerup", button: 0, buttons: 0, pointerType: "mouse", isPrimary: !0 }),
-          l(Vue, "MouseEvent", { type: "mouseup", button: 0, buttons: 0 }))
-        try {
-          Vue.click()
-        } catch {
-          l(Vue, "MouseEvent", { type: "click", button: 0, buttons: 0 })
-        }
-      }, 48),
-      s(),
-      notify.info(`已在原位置打开: ${ballName}`))
   },
   releaseAllBalls: releaseAllBalls,
   releaseAllBallsWithoutSaving: function () {
