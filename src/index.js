@@ -38,6 +38,7 @@ import {
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
 import { store } from "./store.js"
+import { installAnchorObservers, disposeAnchorObservers } from "./panel/anchor-observers.js"
 import { installHostCaptureWatcher, disposeHostCaptureWatcher } from "./capture/host-watcher.js"
 import { ensureViewportFixStyle } from "./styles/viewport-fix.js"
 import { installInputEntry, cleanupInputEntry } from "./ui/input-entry.js"
@@ -98,8 +99,6 @@ import {
 setCapturedBallClickHandler((id, mode) => store.clickCapturedBall(id, mode))
 
 
-let He = null
-let Ze = null
 let edgePanelStyleHost = null
 let rt = null,
   it = null,
@@ -178,35 +177,7 @@ function ht() {
       }
     })({ has: hasCapturedElement }, store.isValidFingerprint, findPendingRestoreBall, tryCaptureBall)
   ;(installHostCaptureWatcher({ checkAndCaptureNewFloatingBall: e, checkAndCaptureFloatingBallByClass: t }),
-    (function (e) {
-      resetPositionMemory()
-      const t = resolveAnchorBottom(),
-        n = resolveInputAnchor(),
-        a = resolveSidebarAnchor()
-      ;(updatePanelPosition(e, !0),
-        (He = new ResizeObserver(() => {
-          updatePanelPosition(e)
-        })),
-        t && He.observe(t),
-        n && He.observe(n),
-        a && He.observe(a),
-        $(window.parent).on("resize.edgePanel", () => updatePanelPosition(e)))
-      const o = window.parent.document
-      let r = t,
-        i = n,
-        l = a
-      ;((Ze = new MutationObserver(() => {
-        const t = resolveAnchorBottom(),
-          n = resolveInputAnchor(),
-          a = resolveSidebarAnchor()
-        let o = !1
-        ;(t !== r && ((r = t), t && He && He.observe(t), (o = !0)),
-          n !== i && ((i = n), n && He && He.observe(n), (o = !0)),
-          a !== l && ((l = a), a && He && He.observe(a), (o = !0)),
-          o && updatePanelPosition(e, !0))
-      })),
-        Ze.observe(o.body, { childList: !0, subtree: !0 }))
-    })(store.setPanelLeftPosition),
+    installAnchorObservers(store.setPanelLeftPosition),
     setupVisualViewportGuards(store.setPanelLeftPosition),
     setupKeyboardGuards(),
     Vue.watch(settingsApi.effectivePosition, () => {
@@ -232,8 +203,7 @@ function ht() {
         stopAutoScan(),
         endCapturePick(),
         disposeHostCaptureWatcher(),
-        He && (He.disconnect(), (He = null)),
-        Ze && (Ze.disconnect(), (Ze = null)),
+        disposeAnchorObservers(),
         teardownOwnershipRuntime(),
         $(window).off(".edgePanelLifecycle"),
         $(window.parent).off(".edgePanelLifecycle"),
