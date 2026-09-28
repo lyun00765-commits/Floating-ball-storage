@@ -1,0 +1,7 @@
+{
+  "base": "d14bed7",
+  "file": "src/capture/candidate.js",
+  "rename": {},
+  "expect": { "isFloatingBallCandidate": "isFloatingBallCandidate" },
+  "notes": "识别规则纯搬运（基线中本就是语义化命名）。常量链由 `const A = 1,` 形式拆为独立 export 语句，不影响函数体。"
+}
