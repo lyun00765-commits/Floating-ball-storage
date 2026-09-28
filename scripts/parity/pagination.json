@@ -33,5 +33,15 @@
     "compact": "fbCompactPages",
     "compactAfterRemove": "fbCompactAfterRemove",
     "getContainer": "k"
-  }
+  },
+  "rewrites": {
+    "reorient": [
+      {
+        "desc": "【行为修正】切换贴边方向后重新分页：原先只改排列方向不重新分页，导致水平布局（3/页）切成垂直布局后仍沿用旧页划分，球挤在一页里",
+        "find": "    pageLayer.children[k].style.flexDirection = horiz ? \"row\" : \"column\"\n  }\n}",
+        "replace": "    pageLayer.children[k].style.flexDirection = horiz ? \"row\" : \"column\"\n  }\n  // 每页容量取决于当前布局，切换贴边方向后必须按新容量**重新分页**：\n  // 否则会沿用切换前的页划分（例如水平布局切成垂直后，仍是一页塞 4 个）。\n  compact()\n}"
+      }
+    ]
+  },
+  "notes": "PER_PAGE 两个方向统一为 3（规格只管函数体，常量不在比对范围）；reorient 增加重新分页，已登记 rewrites。"
 }

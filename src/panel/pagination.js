@@ -5,6 +5,9 @@
  *   垂直布局（左/右贴边）：每页 {PER_PAGE.vertical{'}'} 个，纵向排列
  *   水平布局（上/下贴边）：每页 {PER_PAGE.horizontal{'}'} 个，横向排列
  *
+ * 两个方向当前取相同值，让翻页行为在切换贴边方向时保持一致、可预期。
+ * 若将来垂直方向能容纳更多，只调这里即可——但必须同时保证 reorient() 会重新分页。
+ *
  * 宿主结构：容器 > .fb-pages-layer > .fb-page × N > 悬浮球
  */
 
@@ -12,7 +15,7 @@ let ballContainer = null
 let pageLayer = null
 let pageIndex = 0
 let pageCount = 1
-const PER_PAGE = { horizontal: 3, vertical: 5 }
+const PER_PAGE = { horizontal: 3, vertical: 3 }
 function perPage() {
   return isHorizontal() ? PER_PAGE.horizontal : PER_PAGE.vertical
 }
@@ -62,6 +65,9 @@ export function reorient() {
   for (let k = 0; k < pageLayer.children.length; k++) {
     pageLayer.children[k].style.flexDirection = horiz ? "row" : "column"
   }
+  // 每页容量取决于当前布局，切换贴边方向后必须按新容量**重新分页**：
+  // 否则会沿用切换前的页划分（例如水平布局切成垂直后，仍是一页塞 4 个）。
+  compact()
 }
 function applyPage() {
   if (!pageLayer) return
