@@ -37,6 +37,7 @@ import {
   markRuntimeCleaned,
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
+import { store } from "./store.js"
 import {
   tryCaptureBall,
   scanOnce,
@@ -91,399 +92,7 @@ import {
   containsBall,
 } from "./panel/pagination.js"
 
-const o = Vue
-const   de = (0, o.ref)({}),
-  ue = (0, o.ref)({}),
-  ge = (0, o.ref)(!0),
-  Ce = (0, o.ref)(!1),
-  fe = (0, o.ref)(!1),
-  be = (0, o.ref)("auto"),
-  ve = (0, o.ref)("auto"),
-  he = [],
-  me = (0, o.computed)(() => Object.values(de.value).sort((e, t) => (e.order ?? 100) - (t.order ?? 100))),
-  xe = (0, o.computed)(() => Object.values(ue.value)),
-  ye = (0, o.computed)(() => Object.keys(de.value).length > 0 || Object.keys(ue.value).length > 0)
-function Se(e) {
-  for (const t of Object.values(ue.value)) if (fingerprintsMatch(e, t.fingerprint)) return !0
-  return !1
-}
-function ke(e) {
-  for (const t of Object.values(ue.value)) if (fingerprintsMatch(e, t.fingerprint)) return t
-  return null
-}
-function Pe() {
-  const e = Object.values(ue.value)
-  ;((ue.value = {}),
-    persistCapturedBalls(ue.value),
-    e.forEach((e) => {
-      ;(e.element.isConnected && restoreBall(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
-    }))
-}
-function Fe(e, t) {
-  const n = ue.value[e]
-  if (n) {
-    const e = n.element,
-      o = containsBall(e) ? e.nextSibling : null,
-      r = window.parent.getComputedStyle(t)
-    ;((n.originalParent = t.parentElement),
-      (n.originalNextSibling = t.nextSibling),
-      (n.originalStyle = t.style.cssText),
-      (n.originalPosition = {
-        top: r.top,
-        left: r.left,
-        right: r.right,
-        bottom: r.bottom,
-        positionValue: r.position,
-        opacityValue: r.opacity,
-        visibilityValue: r.visibility,
-        pointerEventsValue: r.pointerEvents,
-      }),
-      (n.originalDisplay = r.display || "flex"),
-      (n.fingerprint = extractFingerprint(t)),
-      (n.element = t),
-      insertBallBefore(n, o),
-      e && e.isConnected && e !== t && e.remove())
-  }
-}
-const Ne = {
-  plugins: de,
-  capturedBalls: ue,
-  autoCaptureEnabled: ge,
-  isCaptureModeActive: Ce,
-  isPanelOpen: fe,
-  panelLeftPosition: ve,
-  panelPositionStyle: be,
-  pendingRestoreBalls: pendingRestoreBalls,
-  effectivePosition: settingsApi.effectivePosition,
-  isHorizontalLayout: settingsApi.isHorizontalLayout,
-  isVerticalLayout: settingsApi.isVerticalLayout,
-  isMobile: settingsApi.isMobile,
-  settings: settingsApi.settings,
-  sortedPlugins: me,
-  capturedBallsList: xe,
-  hasPlugins: ye,
-  registerPlugin: function (e) {
-    de.value[e.id] = e
-  },
-  unregisterPlugin: function (e) {
-    delete de.value[e]
-  },
-  addCapturedBall: function (e) {
-    const t = ke(e.fingerprint)
-    if (t) Fe(t.id, e.element)
-    else if (ue.value[e.id]) Fe(e.id, e.element)
-    else {
-      if (((ue.value = { ...ue.value, [e.id]: e }), void 0 !== e.order)) {
-        const t = getContainer()
-        if (t) {
-          const n = Object.values(ue.value)
-            .filter((t) => t.id !== e.id && void 0 !== t.order)
-            .sort((e, t) => (e.order ?? 0) - (t.order ?? 0))
-          let a = null
-          for (const o of n)
-            if ((o.order ?? 0) > e.order && t && t.contains(o.element)) {
-              a = o.element
-              break
-            }
-          insertBallBefore(e, a)
-        } else moveBallToContainer(e)
-      } else moveBallToContainer(e)
-      ;(markBallRestored(e.fingerprint), isRestoreInProgress() || persistCapturedBalls(ue.value))
-    }
-  },
-  removeCapturedBall: function (e) {
-    const t = ue.value[e]
-    if (t) {
-      const n = t.element,
-        a = t.fingerprint,
-        { [e]: _, ...o } = ue.value
-      ;((ue.value = o), markBallRestored(a), persistCapturedBalls(ue.value), n && restoreBall(t), he.forEach((t) => t(e, a, n)))
-    }
-  },
-  clickCapturedBall: function (e, t = "default") {
-    const n = ue.value[e]
-    if (!n) return
-    const a = n.element,
-      o = n.element,
-      r = n.order,
-      i = window.parent || window,
-      ballName = n.name
-    if ("root-open" === t) {
-      const t = () => {
-        if (!a.isConnected || ue.value[e]) return
-        ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
-      }
-      ;(a.setAttribute("data-edge-panel-ignore", "1"), this.removeCapturedBall(e))
-      const n =
-        a.closest("#auto_illustrator_conso_floating_panel_root") ||
-        i.document.getElementById("auto_illustrator_conso_floating_panel_root")
-      const o =
-        a.id === "ai-floating-panel-launcher"
-          ? a
-          : n?.querySelector("#ai-floating-panel-launcher,.ai-floating-panel-launcher")
-      if (n && o) {
-        ;(n.setAttribute("data-edge-panel-ignore", "1"), o.setAttribute("data-edge-panel-ignore", "1"))
-        const r = o.getBoundingClientRect(),
-          s = r.left + r.width / 2,
-          l = r.top + r.height / 2,
-          u = new (i.PointerEvent || PointerEvent)("pointerdown", {
-            bubbles: !0,
-            cancelable: !0,
-            clientX: s,
-            clientY: l,
-            button: 0,
-            pointerId: 1,
-            pointerType: "mouse",
-            isPrimary: !0,
-          }),
-          c = new (i.PointerEvent || PointerEvent)("pointermove", {
-            bubbles: !0,
-            cancelable: !0,
-            clientX: s + 4,
-            clientY: l + 4,
-            button: 0,
-            pointerId: 1,
-            pointerType: "mouse",
-            isPrimary: !0,
-          }),
-          d = new (i.PointerEvent || PointerEvent)("pointerup", {
-            bubbles: !0,
-            cancelable: !0,
-            clientX: s + 4,
-            clientY: l + 4,
-            button: 0,
-            pointerId: 1,
-            pointerType: "mouse",
-            isPrimary: !0,
-          })
-        try {
-          ;(o.dispatchEvent(u), i.document.dispatchEvent(c), i.document.dispatchEvent(d))
-        } catch {}
-        try {
-          i.localStorage?.setItem(
-            "auto_illustrator_conso_floating_panel_position",
-            JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) }),
-          )
-        } catch {}
-        setTimeout(() => {
-          try {
-            o.click()
-          } catch {
-            try {
-              const e = (i && i.MouseEvent) || MouseEvent
-              o.dispatchEvent(new e("click", { bubbles: !0, cancelable: !0, view: i }))
-            } catch {}
-          }
-        }, 80)
-        const h = setInterval(() => {
-          if (!n.isConnected || ue.value[e]) return void clearInterval(h)
-          n.classList.contains("open") ||
-            (clearInterval(h),
-            setTimeout(() => {
-              ;(n.removeAttribute("data-edge-panel-ignore"), o.removeAttribute("data-edge-panel-ignore"), t())
-            }, 120))
-        }, 250)
-        ;(setTimeout(() => clearInterval(h), 15000), toastr.info(`已在原位置打开: ${ballName}`))
-        return
-      }
-      if (n) {
-        n.classList.add("open")
-        const o = setInterval(() => {
-          if (!n.isConnected || ue.value[e]) return void clearInterval(o)
-          n.classList.contains("open") || (clearInterval(o), setTimeout(t, 120))
-        }, 250)
-        setTimeout(() => clearInterval(o), 15000)
-      }
-      toastr.info(`已在原位置打开: ${ballName}`)
-      return
-    }
-    const l = (e, t, n = {}) => {
-      try {
-        const a = i[t] || window[t]
-        a && e.dispatchEvent(new a(n.type, { bubbles: !0, cancelable: !0, view: i, ...n }))
-      } catch {}
-    }
-    const s = () => {
-      let wasExpanded = !1
-      const ballId = e
-      const t = () => {
-        const e = String(a.getAttribute("aria-expanded") || "").toLowerCase(),
-          t = `${a.className || ""} ${o.className || ""}`.toLowerCase()
-        return "true" === e || /(^|\s)(active|open|opened|expanded|selected)(\s|$)/.test(t)
-      }
-      const n = setInterval(() => {
-        if (!a.isConnected || ue.value[ballId]) return void clearInterval(n)
-        const o = t()
-        o
-          ? (wasExpanded = !0)
-          : wasExpanded &&
-            (clearInterval(n),
-            setTimeout(() => {
-              if (!a.isConnected || ue.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
-            }, 120))
-      }, 250)
-      setTimeout(() => clearInterval(n), 15000)
-      setTimeout(() => {
-        const cleanup = () => {
-          ;(a.removeEventListener("click", cleanup, !0),
-            a.removeEventListener("touchend", cleanup, !0),
-            setTimeout(() => {
-              if (!a.isConnected || ue.value[ballId]) return
-              ;(a.removeAttribute("data-edge-panel-ignore"), tryCaptureBall(a, { order: r }))
-            }, 120))
-        }
-        ;(a.addEventListener("click", cleanup, !0), a.addEventListener("touchend", cleanup, !0))
-      }, 400)
-    }
-    ;(a.setAttribute("data-edge-panel-ignore", "1"),
-      this.removeCapturedBall(e),
-      setTimeout(() => {
-        ;(l(o, "PointerEvent", { type: "pointerdown", button: 0, buttons: 1, pointerType: "mouse", isPrimary: !0 }),
-          l(o, "MouseEvent", { type: "mousedown", button: 0, buttons: 1 }),
-          l(o, "PointerEvent", { type: "pointerup", button: 0, buttons: 0, pointerType: "mouse", isPrimary: !0 }),
-          l(o, "MouseEvent", { type: "mouseup", button: 0, buttons: 0 }))
-        try {
-          o.click()
-        } catch {
-          l(o, "MouseEvent", { type: "click", button: 0, buttons: 0 })
-        }
-      }, 48),
-      s(),
-      toastr.info(`已在原位置打开: ${ballName}`))
-  },
-  releaseAllBalls: Pe,
-  releaseAllBallsWithoutSaving: function () {
-    const e = Object.values(ue.value)
-    ;((ue.value = {}),
-      e.forEach((e) => {
-        ;(e.element.isConnected && restoreBall(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
-      }))
-  },
-  updateCapturedBallElement: Fe,
-  cleanupInvalidBalls: function () {
-    const e = []
-    for (const [t, n] of Object.entries(ue.value)) n.element.isConnected || e.push(t)
-    if (e.length > 0) {
-      for (const t of e) {
-        const e = ue.value[t]
-        ;(e && he.forEach((n) => n(t, e.fingerprint, e.element)), delete ue.value[t])
-      }
-      ;((ue.value = { ...ue.value }), persistCapturedBalls(ue.value))
-    }
-    for (const [t, n] of capturedElementEntries()) {
-      ;(t.isConnected && ue.value[n]) || forgetCapturedElement(t)
-    }
-  },
-  onBallReleased: function (e) {
-    return (
-      he.push(e),
-      () => {
-        const t = he.indexOf(e)
-        t > -1 && he.splice(t, 1)
-      }
-    )
-  },
-  togglePanel: function () {
-    fe.value = !fe.value
-  },
-  closePanel: function () {
-    fe.value = !1
-  },
-  openPanel: function () {
-    fe.value = !0
-  },
-  setPanelLeftPosition: function (e) {
-    ;((ve.value = e), (be.value = e))
-  },
-  updatePanelPositionStyle: function (e) {
-    const t = settingsApi.effectivePosition.value
-    if (e)
-      switch (t) {
-        case "left":
-          be.value = `${Math.round(e.left)}px`
-          break
-        case "right":
-          be.value = `${Math.round(e.right)}px`
-          break
-        case "top":
-          be.value = `${Math.round(e.top)}px`
-          break
-        case "bottom":
-          be.value = `${Math.round(e.bottom)}px`
-      }
-    else
-      switch (t) {
-        case "left":
-        case "top":
-          be.value = "0px"
-          break
-        case "right":
-          be.value = `${window.parent.innerWidth}px`
-          break
-        case "bottom":
-          be.value = `${window.parent.innerHeight}px`
-      }
-  },
-  initSettings: settingsApi.initSettings,
-  setPanelPosition: settingsApi.setPanelPosition,
-  toggleAutoCapture: function () {
-    ;((ge.value = !ge.value), ge.value || Pe())
-    syncAutoScan()
-  },
-  enterCaptureMode: function () {
-    Ce.value = !0
-  },
-  exitCaptureMode: function () {
-    Ce.value = !1
-  },
-  toggleCaptureMode: function () {
-    Ce.value = !Ce.value
-  },
-  setBallContainer,
-  goPage,
-  fbGetPageState: getPageState,
-  getBallContainer: getContainer,
-  moveBallToContainer: moveBallToContainer,
-  moveBallBackToOriginal: restoreBall,
-  hideFloatingBall: hideBall,
-  showFloatingBall: function (e, t) {
-    e.style.cssText = t
-  },
-  initPersistence,
-  saveCapturedBalls: () => persistCapturedBalls(ue.value),
-  findPendingRestoreBall: findPendingRestoreBall,
-  shouldRestoreBall: function (e, t, n) {
-    return null !== findPendingRestoreBall({ scriptId: e, elementId: n || null, classSelector: t, title: null })
-  },
-  markBallRestored: markBallRestored,
-  removeFromPendingRestore: markBallRestored,
-  getPendingRestoreBalls: function () {
-    return pendingRestoreBalls.value
-  },
-  extractFingerprint,
-  generateBallIdFromFingerprint: function (e) {
-    if (e.scriptId) return `ball_script_${e.scriptId}`
-    if (e.elementId) return `ball_id_${e.elementId}`
-    if (e.classSelector || e.title) {
-      return `ball_combined_${(function (e) {
-        let t = 0
-        for (let n = 0; n < e.length; n++) ((t = (t << 5) - t + e.charCodeAt(n)), (t &= t))
-        return Math.abs(t)
-      })(`${e.classSelector || ""}_${e.title || ""}`)}`
-    }
-    return `ball_random_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  },
-  fingerprintsMatch,
-  isValidFingerprint,
-  isFingerprintCaptured: Se,
-  findCapturedBallByFingerprint: ke,
-  getClassSelector,
-  isElementIdCaptured: function (e) {
-    return !!e && Se({ scriptId: null, elementId: e, classSelector: null, title: null })
-  },
-}
-setCapturedBallClickHandler((id, mode) => Ne.clickCapturedBall(id, mode))
+setCapturedBallClickHandler((id, mode) => store.clickCapturedBall(id, mode))
 
 
 let Qe = null
@@ -500,17 +109,17 @@ function ht() {
     requestCleanup: () => edgePanelRuntimeCleanup(),
   })
   setViewportGuardDeps({
-    togglePanel: () => Ne.togglePanel(),
-    getPanelPositionTarget: () => Ne.setPanelLeftPosition,
+    togglePanel: () => store.togglePanel(),
+    getPanelPositionTarget: () => store.setPanelLeftPosition,
   })
-  setScanDeps({ store: Ne })
+  setScanDeps({ store: store })
   setViewDeps({
-    store: Ne,
+    store: store,
     triggerScan: (force) => scanOnce(force),
   })
 
 
-  ;(Ne.initPersistence(),
+  ;(store.initPersistence(),
     settingsApi.initSettings(),
     removeStaleArtifacts(),
     !parentDoc.getElementById("edge-panel-viewport-fix") && (function () {
@@ -557,7 +166,7 @@ function ht() {
     syncAutoScan(),
     st ||
       (st = setInterval(() => {
-        Ne.cleanupInvalidBalls()
+        store.cleanupInvalidBalls()
       }, 3e4)))
   const e = (function (e, t, n, a, o, i) {
       return (l) => {
@@ -573,7 +182,7 @@ function ht() {
           i(l, e)
         }
       }
-    })(getScanScriptId(), { has: hasCapturedElement }, Ne.findCapturedBallByFingerprint, Ne.updateCapturedBallElement, findPendingRestoreBall, tryCaptureBall),
+    })(getScanScriptId(), { has: hasCapturedElement }, store.findCapturedBallByFingerprint, store.updateCapturedBallElement, findPendingRestoreBall, tryCaptureBall),
     t = (function (e, t, n, a) {
       return (o) => {
         if (e.has(o) || o.hasAttribute("data-edge-panel-ignore")) return
@@ -590,7 +199,7 @@ function ht() {
           a(o, e)
         }
       }
-    })({ has: hasCapturedElement }, Ne.isValidFingerprint, findPendingRestoreBall, tryCaptureBall)
+    })({ has: hasCapturedElement }, store.isValidFingerprint, findPendingRestoreBall, tryCaptureBall)
   ;(!(function (e) {
     if (Qe) return
     const t = window.parent.document
@@ -660,11 +269,11 @@ function ht() {
           o && updatePanelPosition(e, !0))
       })),
         Ze.observe(o.body, { childList: !0, subtree: !0 }))
-    })(Ne.setPanelLeftPosition),
-    setupVisualViewportGuards(Ne.setPanelLeftPosition),
+    })(store.setPanelLeftPosition),
+    setupVisualViewportGuards(store.setPanelLeftPosition),
     setupKeyboardGuards(),
     (0, o.watch)(settingsApi.effectivePosition, () => {
-      updatePanelPosition(Ne.setPanelLeftPosition, !0)
+      updatePanelPosition(store.setPanelLeftPosition, !0)
       try {
         window.setTimeout(() => {
           try {
@@ -674,11 +283,11 @@ function ht() {
       } catch (err) {}
     }),
     restorePendingBalls(),
-    Ne.onBallReleased((e, t, n) => {
+    store.onBallReleased((e, t, n) => {
       n && forgetCapturedElement(n)
     }),
-    (0, o.watch)(Ne.isCaptureModeActive, (e, t) => {
-      e && !t ? beginCapturePick(getScanScriptId(), tryCaptureBall, () => Ne.exitCaptureMode()) : !e && t && endCapturePick()
+    (0, o.watch)(store.isCaptureModeActive, (e, t) => {
+      e && !t ? beginCapturePick(getScanScriptId(), tryCaptureBall, () => store.exitCaptureMode()) : !e && t && endCapturePick()
     }))
   const n = () => {
       if (isRuntimeCleaned()) return
@@ -695,7 +304,7 @@ function ht() {
         teardownViewportGuards(),
         resetPositionMemory(),
         st && (clearInterval(st), (st = null)),
-        Ne.releaseAllBallsWithoutSaving(),
+        store.releaseAllBallsWithoutSaving(),
         clearCapturedElements(),
         rt && (rt.unmount(), (rt = null)),
         removeOwnedArtifacts(),
@@ -711,9 +320,9 @@ function ht() {
     watchFrameDetachment(edgePanelRuntimeCleanup),
     attachHostActionWatchers(),
     startArtifactMonitor(() => {
-      updatePanelPosition(Ne.setPanelLeftPosition, !0)
+      updatePanelPosition(store.setPanelLeftPosition, !0)
     }),
-    schedulePositionRefresh(Ne.setPanelLeftPosition),
+    schedulePositionRefresh(store.setPanelLeftPosition),
     $(window).on("unload.edgePanelLifecycle", edgePanelRuntimeCleanup),
     $(window.parent).on("pagehide.edgePanelLifecycle", edgePanelRuntimeCleanup),
     $(window.parent).on("beforeunload.edgePanelLifecycle", edgePanelRuntimeCleanup))
@@ -1434,7 +1043,7 @@ function bindEdgeTabMenu() {
 
 export {
   tryCaptureBall as captureElement,
-  Ne as pluginStore,
+  store as pluginStore,
   registerPlugin,
   scanOnce as scanFloatingBalls,
   startAutoScan as startBallScanning,
