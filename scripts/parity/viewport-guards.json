@@ -1,0 +1,17 @@
+{
+  "base": "34e016e",
+  "file": "src/panel/viewport-guards.js",
+  "rename": {
+    "edgePanelIsEdgeTabEvent": "isEdgeTabEvent",
+    "edgePanelPreserveKeyboardToggle": "preserveKeyboardToggle",
+    "edgePanelSuppressGuardedClick": "suppressGuardedClick",
+    "edgePanelViewportResizeHandler": "viewportResizeHandler",
+    "edgePanelViewportScrollHandler": "viewportScrollHandler",
+    "edgePanelFocusHandler": "focusHandler",
+    "edgePanelKeyboardPointerHandler": "keyboardPointerHandler",
+    "edgePanelKeyboardClickHandler": "keyboardClickHandler",
+    "edgePanelKeyboardToggleGuardUntil": "keyboardToggleGuardUntil"
+  },
+  "expect": {},
+  "notes": "setup/teardown 原为 ht() 内 IIFE，无函数声明可比对。用 token 级核对：/workspace/3_sandbox/verify-guards.mjs（3 个守卫函数）、verify-guards-io.mjs（两段 setup）、verify-teardown.mjs（拆卸段）。全部通过；唯一改写是 Ne.togglePanel / Ne.setPanelLeftPosition 改为注入（deps.*）。"
+}

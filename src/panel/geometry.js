@@ -57,12 +57,12 @@ export function edgePanelFocusedInputRect() {
     return null
   }
 }
-export function edgePanelIsTextInputFocused() {
+export function isTextInputFocused() {
   return !!edgePanelFocusedInputRect()
 }
 export function edgePanelKeyboardOpen() {
   try {
-    return !!(settingsApi.isMobile.value && edgePanelIsTextInputFocused())
+    return !!(settingsApi.isMobile.value && isTextInputFocused())
   } catch (e) {
     return !1
   }
@@ -97,7 +97,7 @@ export function edgePanelClampPanelAnchor(e, t) {
 export function edgePanelPx(e) {
   return `${Math.round(e)}px`
 }
-export function edgePanelSchedulePositionRefresh(e) {
+export function schedulePositionRefresh(e) {
   ;[0, 80, 220, 480, 820, 1500, 2600, 4000].forEach((t) => parentWin.setTimeout(() => updatePanelPosition(e, !0), t))
 }
 /** 上一次已提交的位置；避免重复提交相同值触发无谓的布局写入 */

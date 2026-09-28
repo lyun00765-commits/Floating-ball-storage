@@ -38,13 +38,19 @@ import {
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
 import {
+  setupVisualViewportGuards,
+  setupKeyboardGuards,
+  teardownViewportGuards,
+  setViewportGuardDeps,
+} from "./panel/viewport-guards.js"
+import {
   updatePanelPosition,
   resetPositionMemory,
   resolveAnchorBottom,
   resolveInputAnchor,
   resolveSidebarAnchor,
-  edgePanelSchedulePositionRefresh,
-  edgePanelIsTextInputFocused,
+  schedulePositionRefresh,
+  isTextInputFocused,
 } from "./panel/geometry.js"
 import {
   setCapturedBallClickHandler,
@@ -1107,32 +1113,7 @@ const Je = withScopeId(Re, [["__scopeId", "data-v-da7fb8b4"]])
 let Qe = null
 let He = null
 let Ze = null
-let edgePanelViewportResizeHandler = null,
-  edgePanelViewportScrollHandler = null,
-  edgePanelFocusHandler = null,
-  edgePanelKeyboardPointerHandler = null,
-  edgePanelKeyboardClickHandler = null,
-  edgePanelKeyboardToggleGuardUntil = 0,
-  edgePanelStyleHost = null
-function edgePanelIsEdgeTabEvent(e) {
-  const t = e?.target
-  return !!(isElement(t) && isOwnedNode(t) && t.closest?.(".edge-tab,.panel-header"))
-}
-function edgePanelPreserveKeyboardToggle(e) {
-  if (!settingsApi.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
-  const t = Date.now()
-  ;(e.preventDefault?.(), e.stopPropagation?.())
-  if (t < edgePanelKeyboardToggleGuardUntil) return
-  ;((edgePanelKeyboardToggleGuardUntil = t + 450),
-    Ne.togglePanel(),
-    edgePanelSchedulePositionRefresh(Ne.setPanelLeftPosition))
-}
-function edgePanelSuppressGuardedClick(e) {
-  Date.now() < edgePanelKeyboardToggleGuardUntil &&
-    edgePanelIsEdgeTabEvent(e) &&
-    (e.preventDefault?.(), e.stopPropagation?.())
-}
-
+let edgePanelStyleHost = null
 let rt = null,
   it = null,
   lt = null,
@@ -1446,6 +1427,10 @@ function ht() {
     mountHost: it,
     requestCleanup: () => edgePanelRuntimeCleanup(),
   })
+  setViewportGuardDeps({
+    togglePanel: () => Ne.togglePanel(),
+    getPanelPositionTarget: () => Ne.setPanelLeftPosition,
+  })
 
 
   ;(Ne.initPersistence(),
@@ -1599,32 +1584,8 @@ function ht() {
       })),
         Ze.observe(o.body, { childList: !0, subtree: !0 }))
     })(Ne.setPanelLeftPosition),
-    (function (e) {
-      const t = parentWin.visualViewport
-      if (t) {
-        ;((edgePanelViewportResizeHandler = () => updatePanelPosition(e, !0)),
-          (edgePanelViewportScrollHandler = () => updatePanelPosition(e, !0)),
-          t.addEventListener("resize", edgePanelViewportResizeHandler, { passive: !0 }),
-          t.addEventListener("scroll", edgePanelViewportScrollHandler, { passive: !0 }))
-      }
-      ;((edgePanelFocusHandler = () => edgePanelSchedulePositionRefresh(e)),
-        parentDoc.addEventListener("focusin", edgePanelFocusHandler, !0),
-        parentDoc.addEventListener("focusout", edgePanelFocusHandler, !0))
-    })(Ne.setPanelLeftPosition),
-    (function () {
-      ;((edgePanelKeyboardPointerHandler = (e) => edgePanelPreserveKeyboardToggle(e)),
-        (edgePanelKeyboardClickHandler = (e) => edgePanelSuppressGuardedClick(e)),
-        parentDoc.addEventListener("pointerdown", edgePanelKeyboardPointerHandler, {
-          capture: !0,
-          passive: !1,
-        }),
-        parentDoc.addEventListener("touchstart", edgePanelKeyboardPointerHandler, {
-          capture: !0,
-          passive: !1,
-        }),
-        parentDoc.addEventListener("mousedown", edgePanelKeyboardPointerHandler, { capture: !0, passive: !1 }),
-        parentDoc.addEventListener("click", edgePanelKeyboardClickHandler, !0))
-    })(),
+    setupVisualViewportGuards(Ne.setPanelLeftPosition),
+    setupKeyboardGuards(),
     (0, o.watch)(settingsApi.effectivePosition, () => {
       updatePanelPosition(Ne.setPanelLeftPosition, !0)
       try {
@@ -1653,25 +1614,8 @@ function ht() {
         teardownOwnershipRuntime(),
         $(window).off(".edgePanelLifecycle"),
         $(window.parent).off(".edgePanelLifecycle"),
-        $(window.parent).off("resize.edgePanel"))
-      const e = parentWin.visualViewport
-      ;(e && edgePanelViewportResizeHandler && e.removeEventListener("resize", edgePanelViewportResizeHandler),
-        e && edgePanelViewportScrollHandler && e.removeEventListener("scroll", edgePanelViewportScrollHandler),
-        edgePanelFocusHandler &&
-          (parentDoc.removeEventListener("focusin", edgePanelFocusHandler, !0),
-          parentDoc.removeEventListener("focusout", edgePanelFocusHandler, !0)),
-        edgePanelKeyboardPointerHandler &&
-          (parentDoc.removeEventListener("pointerdown", edgePanelKeyboardPointerHandler, !0),
-          parentDoc.removeEventListener("touchstart", edgePanelKeyboardPointerHandler, !0),
-          parentDoc.removeEventListener("mousedown", edgePanelKeyboardPointerHandler, !0)),
-        edgePanelKeyboardClickHandler &&
-          parentDoc.removeEventListener("click", edgePanelKeyboardClickHandler, !0),
-        (edgePanelViewportResizeHandler = null),
-        (edgePanelViewportScrollHandler = null),
-        (edgePanelFocusHandler = null),
-        (edgePanelKeyboardPointerHandler = null),
-        (edgePanelKeyboardClickHandler = null),
-        (edgePanelKeyboardToggleGuardUntil = 0),
+        $(window.parent).off("resize.edgePanel"),
+        teardownViewportGuards(),
         resetPositionMemory(),
         st && (clearInterval(st), (st = null)),
         Ne.releaseAllBallsWithoutSaving(),
@@ -1693,7 +1637,7 @@ function ht() {
     startArtifactMonitor(() => {
       updatePanelPosition(Ne.setPanelLeftPosition, !0)
     }),
-    edgePanelSchedulePositionRefresh(Ne.setPanelLeftPosition),
+    schedulePositionRefresh(Ne.setPanelLeftPosition),
     $(window).on("unload.edgePanelLifecycle", edgePanelRuntimeCleanup),
     $(window.parent).on("pagehide.edgePanelLifecycle", edgePanelRuntimeCleanup),
     $(window.parent).on("beforeunload.edgePanelLifecycle", edgePanelRuntimeCleanup))

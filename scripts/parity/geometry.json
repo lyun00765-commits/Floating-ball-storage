@@ -2,8 +2,13 @@
   "base": "a0ba039",
   "file": "src/panel/geometry.js",
   "rename": {
-    "tt": "resolveAnchorBottom", "nt": "resolveInputAnchor", "at": "resolveSidebarAnchor",
-    "et": "committedPosition", "ot": "updatePanelPosition"
+    "tt": "resolveAnchorBottom",
+    "nt": "resolveInputAnchor",
+    "at": "resolveSidebarAnchor",
+    "et": "committedPosition",
+    "ot": "updatePanelPosition",
+    "edgePanelSchedulePositionRefresh": "schedulePositionRefresh",
+    "edgePanelIsTextInputFocused": "isTextInputFocused"
   },
   "expect": {
     "resolveAnchorBottom": "resolveAnchorBottom",
@@ -11,11 +16,11 @@
     "resolveSidebarAnchor": "resolveSidebarAnchor",
     "edgePanelViewportBounds": "edgePanelViewportBounds",
     "edgePanelFocusedInputRect": "edgePanelFocusedInputRect",
-    "edgePanelIsTextInputFocused": "edgePanelIsTextInputFocused",
     "edgePanelKeyboardOpen": "edgePanelKeyboardOpen",
     "edgePanelClampPanelAnchor": "edgePanelClampPanelAnchor",
     "edgePanelPx": "edgePanelPx",
-    "edgePanelSchedulePositionRefresh": "edgePanelSchedulePositionRefresh",
-    "updatePanelPosition": "updatePanelPosition"
+    "updatePanelPosition": "updatePanelPosition",
+    "schedulePositionRefresh": "schedulePositionRefresh",
+    "isTextInputFocused": "isTextInputFocused"
   }
 }
