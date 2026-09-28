@@ -14,6 +14,7 @@ import { extractFingerprint } from '../core/fingerprint.js'
 import { getElementName } from '../core/element-info.js'
 import { removeReleased } from '../persist/released.js'
 import { notify } from '../core/platform.js'
+import { runtimeOwner } from '../runtime-identity.js'
 import {
   getNameTokens,
   isPopupLikeName,
@@ -145,6 +146,9 @@ export function beginCapturePick(e, t, n) {
       ;((overlayEl = t.createElement("div")),
         (overlayEl.id = "capture-mode-overlay"),
         overlayEl.setAttribute("script_id", e),
+        // 标记为「本运行时创建的节点」：这是所有权信号，运行时清理时会一并移除，
+        // 同时让宿主动作观察者知道「它消失」不等于「脚本被删除」。
+        overlayEl.setAttribute("data-edge-panel-owner", runtimeOwner),
         (overlayEl.style.cssText =
           "\n    position: fixed;\n    top: 0;\n    left: 0;\n    right: 0;\n    bottom: 0;\n    background: rgba(0, 0, 0, 0.3);\n    z-index: 2147483646;\n    cursor: crosshair;\n    pointer-events: none;\n  "))
       const n = t.createElement("div")

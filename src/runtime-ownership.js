@@ -136,6 +136,24 @@ export function isOwnedNode(e) {
     e.closest(`[data-edge-panel-owner="${runtimeOwner}"]`)
   )
 }
+/**
+ * 宿主移除一个节点，是否意味着「本脚本已被删除」？
+ *
+ * 判据是「节点提到本脚本」（文本含脚本 id，或本身带 script_id）。
+ * **必须排除我们自己创建的节点**：面板宿主、样式宿主、点选遮罩都会带 script_id
+ * （本意是让扫描器与判定逻辑跳过它们），它们被正常移除时绝不能当成脚本删除信号。
+ *
+ * 历史教训：点选结束时遮罩被移除 → 命中此判据 → 整体 cleanup 被误触发，
+ * 表现为「已收纳的球全部逃逸、输入框入口消失」。
+ */
+export function isScriptRemovalSignal(e) {
+  if (!isElement(e)) return !1
+  if (isOwnedNode(e)) return !1
+  if (nodeMentionsScriptByText(e)) return !0
+  if ("function" != typeof e.querySelector) return !1
+  return [...e.querySelectorAll("*")].some((e) => !isOwnedNode(e) && nodeMentionsScriptByText(e))
+}
+
 export function nodeMentionsScriptByText(e) {
   if (!e || !runtimeId) return !1
   try {
@@ -172,13 +190,7 @@ export function attachHostActionWatchers() {
       for (const t of e)
         if ("childList" === t.type)
           for (const e of t.removedNodes)
-            if (isElement(e)) {
-              if (nodeMentionsScriptByText(e)) return void deps.requestCleanup()
-              if ("function" == typeof e.querySelector) {
-                const t = [...e.querySelectorAll("*")].some((e) => nodeMentionsScriptByText(e))
-                if (t) return void deps.requestCleanup()
-              }
-            }
+            if (isScriptRemovalSignal(e)) return void deps.requestCleanup()
     })),
     hostActionObserver.observe(parentDoc.body, { childList: !0, subtree: !0 }))
 }

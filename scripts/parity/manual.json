@@ -37,7 +37,14 @@
         "find": "  if (/关闭|收起|取消/.test(i) && a <= 40 && o <= 40) return !1",
         "replace": "  if (CLOSE_TEXT_PATTERN.test(i) && a <= 40 && o <= 40) return !1"
       }
+    ],
+    "beginCapturePick": [
+      {
+        "desc": "【行为修正】点选遮罩标记为 runtimeOwner 产物：遮罩带 script_id 会命中「节点提到本脚本即判定脚本被删除」的宿主动作观察者，导致结束点选时误触发整体 cleanup（球被释放、入口消失）",
+        "find": "        overlayEl.setAttribute(\"script_id\", e),",
+        "replace": "        overlayEl.setAttribute(\"script_id\", e),\n        // 标记为「本运行时创建的节点」：这是所有权信号，运行时清理时会一并移除，\n        // 同时让宿主动作观察者知道「它消失」不等于「脚本被删除」。\n        overlayEl.setAttribute(\"data-edge-panel-owner\", runtimeOwner),"
+      }
     ]
   },
-  "notes": "已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 toastr 调用统一改走 notify 安全封装（A4），已登记 rewrites。"
+  "notes": "已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 toastr 调用统一改走 notify 安全封装（A4），已登记 rewrites。 beginCapturePick 含一处行为修正（遮罩所有权标记），已登记 rewrites。"
 }
