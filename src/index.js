@@ -38,6 +38,7 @@ import {
   teardownOwnershipRuntime,
 } from "./runtime-ownership.js"
 import { store } from "./store.js"
+import { ensureViewportFixStyle } from "./styles/viewport-fix.js"
 import { installInputEntry, cleanupInputEntry } from "./ui/input-entry.js"
 import {
   tryCaptureBall,
@@ -123,32 +124,7 @@ function ht() {
   ;(store.initPersistence(),
     settingsApi.initSettings(),
     removeStaleArtifacts(),
-    !parentDoc.getElementById("edge-panel-viewport-fix") && (function () {
-      var s = parentDoc.createElement("style");
-      s.id = "edge-panel-viewport-fix";
-      s.textContent =
-        "@media (min-width:769px){" +
-        ".edge-panel-root--left{transform:translateY(-50%)!important;}" +
-        ".edge-panel-root--right{transform:translateY(-50%)!important;}" +
-        "}" +
-        "@media (max-width:768px){" +
-        ".edge-panel-root--left{left:0!important;transform:none!important;}" +
-        ".edge-panel-root--right{left:auto!important;right:0!important;transform:none!important;}" +
-        ".edge-tab--left{border-radius:0 12px 12px 0!important;}" +
-        ".edge-tab--right{border-radius:12px 0 0 12px!important;}" +
-        ".icon-panel--left{left:0!important;right:auto!important;border-radius:0 14px 14px 0!important;}" +
-        ".icon-panel--right{right:0!important;left:auto!important;border-radius:14px 0 0 14px!important;}" +
-        ".edge-tab{backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;}" +
-        ".icon-panel{backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;box-shadow:0 8px 32px rgba(0,0,0,0.35)!important;}" +
-        ".plugin-icon{border-radius:10px!important;}" +
-        ".action-icon{border-radius:8px!important;}" +
-        ".panel-header:hover{background:transparent!important;}" +
-        ".edge-tab-fade-leave-active{transition:none}" +
-        ".edge-tab-fade-enter-active{transition:opacity .3s ease}" +
-        ".edge-tab-fade-enter-from,.edge-tab-fade-leave-to{opacity:0}" +
-        "}";
-      (parentDoc.head || parentDoc.documentElement).appendChild(s);
-    })(),
+    ensureViewportFixStyle(parentDoc),
     (it = markOwnedNode(parentDoc.createElement("div"))),
     it.setAttribute("script_id", runtimeId),
     parentDoc.body.appendChild(it),
