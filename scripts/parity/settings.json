@@ -1,0 +1,10 @@
+{
+  "base": "f14086f",
+  "file": "src/settings.js",
+  "rename": {
+    "oe": "isMobile", "re": "settingsSchema", "ie": "settings",
+    "le": "effectivePosition", "se": "isHorizontalLayout", "Ae": "isVerticalLayout",
+    "ce": "saveSettings", "pe": "settingsApi", "e": "klona"
+  },
+  "expect": { "saveSettings": "saveSettings" }
+}

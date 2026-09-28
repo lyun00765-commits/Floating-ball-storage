@@ -1,4 +1,3 @@
-import { klona as e } from "https://testingcf.jsdelivr.net/npm/klona/+esm"
 import { injectStyles } from "./styles/inject.js"
 import { extractFingerprint, fingerprintsMatch, isValidFingerprint, getClassSelector } from "./core/fingerprint.js"
 import { withAlpha, darken } from "./core/color.js"
@@ -19,6 +18,7 @@ import {
   beginRestoreBatch,
   isRestoreInProgress,
 } from "./persist/saved-balls.js"
+import { settingsApi, setCaptureModeChangeHandler } from "./settings.js"
 import {
   setCapturedBallClickHandler,
   moveBallToContainer,
@@ -30,8 +30,6 @@ import {
   isReleasedFingerprint,
   addReleased,
   removeReleased,
-  clearReleased,
-  getReleasedCount,
 } from "./persist/released.js"
 import {
   setBallContainer,
@@ -50,90 +48,7 @@ function withScopeId(component, attrs) {
 }
 
 const o = Vue
-const oe = (0, o.ref)(!1)
-const re = z.z
-    .object({
-      panelPosition: z.z.enum(["left", "right", "top", "bottom"]).nullable().default(null),
-      captureMode: z.z.enum(["manual", "auto"]).nullable().default("manual"),
-    })
-    .prefault({}),
-  ie = (0, o.ref)({ panelPosition: null, captureMode: "manual" }),
-  le = (0, o.computed)(() => ie.value.panelPosition ?? "top"),
-  se = (0, o.computed)(() => "top" === le.value || "bottom" === le.value),
-  Ae = (0, o.computed)(() => "left" === le.value || "right" === le.value)
-function ce() {
-  try {
-    const t = {
-      ...(getVariables({ type: "script", script_id: getScriptId() }) ?? {}),
-      integration_settings: e(ie.value),
-    }
-    ;(console.info("[集成控件] 保存设置:", ie.value), replaceVariables(t, { type: "script", script_id: getScriptId() }))
-  } catch (e) {
-    console.warn("[集成控件] 保存设置失败:", e)
-  }
-}
-const pe = {
-    settings: ie,
-    isMobile: oe,
-    effectivePosition: le,
-    isHorizontalLayout: se,
-    isVerticalLayout: Ae,
-    initSettings: function () {
-      ;((oe.value = (function () {
-        const e = window.parent,
-          t = e.innerWidth,
-          n = "ontouchstart" in e || navigator.maxTouchPoints > 0
-        return t < 768 || (n && t < 1024)
-      })()),
-        console.info("[集成控件] 移动端检测:", oe.value))
-      try {
-        const e = getVariables({ type: "script", script_id: getScriptId() })
-        console.info("[集成控件] 读取的脚本变量:", e)
-        const t = e?.integration_settings
-        if (t && "object" == typeof t) {
-          const e = re.parse(t)
-          ;((ie.value = e), console.info("[集成控件] 解析后的设置:", e, "有效位置:", le.value))
-        } else
-          ((ie.value = { panelPosition: null, captureMode: "manual" }), console.info("[集成控件] 没有保存的设置，使用默认位置:", le.value))
-      } catch (e) {
-        ;(console.warn("[集成控件] 读取设置失败，使用默认值:", e), (ie.value = { panelPosition: null, captureMode: "manual" }))
-      }
-    },
-    saveSettings: ce,
-    setPanelPosition: function (e) {
-      ;(console.info("[集成控件] 设置面板位置:", e), (ie.value.panelPosition = e), ce())
-      try {
-        window.setTimeout(() => {
-          try {
-            reorient()
-          } catch (err) {}
-        }, 40)
-      } catch (err) {}
-    },
-    setCaptureMode: function (e) {
-      const t = "auto" === e ? "auto" : "manual"
-      ;(ie.value.captureMode = t, ce())
-      try {
-        this.syncAutoScan()
-      } catch {}
-    },
-    getCaptureMode: function () {
-      return "auto" === ie.value.captureMode ? "auto" : "manual"
-    },
-    syncAutoScan: function () {
-      if ("auto" === this.getCaptureMode() && Ne.autoCaptureEnabled.value) {
-        if (!lt) ft()
-      } else if (lt) bt()
-    },
-    clearReleasedFps: function () {
-      ;clearReleased()
-    },
-    getReleasedFpCount: function () {
-      return getReleasedCount()
-    },
-    cleanup: function () {},
-  },
-  de = (0, o.ref)({}),
+const   de = (0, o.ref)({}),
   ue = (0, o.ref)({}),
   ge = (0, o.ref)(!0),
   Ce = (0, o.ref)(!1),
@@ -195,11 +110,11 @@ const Ne = {
   panelLeftPosition: ve,
   panelPositionStyle: be,
   pendingRestoreBalls: pendingRestoreBalls,
-  effectivePosition: pe.effectivePosition,
-  isHorizontalLayout: pe.isHorizontalLayout,
-  isVerticalLayout: pe.isVerticalLayout,
-  isMobile: pe.isMobile,
-  settings: pe.settings,
+  effectivePosition: settingsApi.effectivePosition,
+  isHorizontalLayout: settingsApi.isHorizontalLayout,
+  isVerticalLayout: settingsApi.isVerticalLayout,
+  isMobile: settingsApi.isMobile,
+  settings: settingsApi.settings,
   sortedPlugins: me,
   capturedBallsList: xe,
   hasPlugins: ye,
@@ -438,7 +353,7 @@ const Ne = {
     ;((ve.value = e), (be.value = e))
   },
   updatePanelPositionStyle: function (e) {
-    const t = pe.effectivePosition.value
+    const t = settingsApi.effectivePosition.value
     if (e)
       switch (t) {
         case "left":
@@ -466,11 +381,11 @@ const Ne = {
           be.value = `${window.parent.innerHeight}px`
       }
   },
-  initSettings: pe.initSettings,
-  setPanelPosition: pe.setPanelPosition,
+  initSettings: settingsApi.initSettings,
+  setPanelPosition: settingsApi.setPanelPosition,
   toggleAutoCapture: function () {
     ;((ge.value = !ge.value), ge.value || Pe())
-    pe.syncAutoScan()
+    syncAutoScan()
   },
   enterCaptureMode: function () {
     Ce.value = !0
@@ -869,17 +784,17 @@ const Ge = { class: "panel-icons" },
         }
         T()
       }
-      const captureModeActive = (0, o.ref)(pe.getCaptureMode())
+      const captureModeActive = (0, o.ref)(settingsApi.getCaptureMode())
       function setCaptureModeUI(aMode) {
         if (aMode === captureModeActive.value) return
         captureModeActive.value = aMode
-        pe.setCaptureMode(aMode)
+        settingsApi.setCaptureMode(aMode)
         toastr.info(aMode === "auto" ? "已切换到自动模式：悬浮球将自动收纳" : "已切换到手动模式：长按捕捉=全部收纳")
       }
       function clearMemoryUI() {
-        const t = pe.getReleasedFpCount()
+        const t = settingsApi.getReleasedFpCount()
         if (0 === t) return void toastr.info("当前无记忆")
-        ;(pe.clearReleasedFps(), toastr.success(`已清空 ${t} 条释放记忆`))
+        ;(settingsApi.clearReleasedFps(), toastr.success(`已清空 ${t} 条释放记忆`))
       }
       function handleContainerTouchStart(e) {
         const n = e.touches && e.touches[0]
@@ -1508,7 +1423,7 @@ function edgePanelIsTextInputFocused() {
 }
 function edgePanelKeyboardOpen() {
   try {
-    return !!(pe.isMobile.value && edgePanelIsTextInputFocused())
+    return !!(settingsApi.isMobile.value && edgePanelIsTextInputFocused())
   } catch (e) {
     return !1
   }
@@ -1551,7 +1466,7 @@ function edgePanelSchedulePositionRefresh(e) {
   ;[0, 80, 220, 480, 820, 1500, 2600, 4000].forEach((t) => edgePanelParentWin.setTimeout(() => ot(e, !0), t))
 }
 function edgePanelPreserveKeyboardToggle(e) {
-  if (!pe.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
+  if (!settingsApi.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
   const t = Date.now()
   ;(e.preventDefault?.(), e.stopPropagation?.())
   if (t < edgePanelKeyboardToggleGuardUntil) return
@@ -1605,7 +1520,7 @@ function ot(e, t = !1) {
         }
         return edgePanelPx(o.right)
     }
-  })(pe.effectivePosition.value)
+  })(settingsApi.effectivePosition.value)
   if (null !== n) {
     ;(t || et !== n) && ((et = n), e(n))
   }
@@ -1701,7 +1616,7 @@ function isFloatingBallCandidate(e, ownScriptId) {
   if (e.hasAttribute("data-edge-panel-ignore")) return !1
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1
   if ((e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")) === ownScriptId) return !1
-  if ("auto" === pe.getCaptureMode() && isReleasedFingerprint(extractFingerprint(e))) return !1
+  if ("auto" === settingsApi.getCaptureMode() && isReleasedFingerprint(extractFingerprint(e))) return !1
   if (getContainer() && getContainer().contains(e)) return !1
   if (e.closest(".edge-panel-root,[data-edge-panel-owner]")) return !1
 
@@ -1775,6 +1690,14 @@ function isFloatingBallCandidate(e, ownScriptId) {
   return hasScriptId || score >= BALL_SCORE_THRESHOLD
 }
 
+/** 设置变化 → 联动自动扫描的启停（原 settingsApi.syncAutoScan） */
+function syncAutoScan() {
+  if ("auto" === settingsApi.getCaptureMode() && Ne.autoCaptureEnabled.value) {
+    if (!lt) ft()
+  } else if (lt) bt()
+}
+setCaptureModeChangeHandler(syncAutoScan)
+
 function Ct(forceFullScan) {
   if (!Ne.autoCaptureEnabled.value) return
   const selectors = [
@@ -1835,7 +1758,7 @@ function Ct(forceFullScan) {
 }
 function ft() {
   Ne.autoCaptureEnabled.value &&
-    "auto" === pe.getCaptureMode() &&
+    "auto" === settingsApi.getCaptureMode() &&
     (mt = 0,
       (lt = setInterval(() => {
         ;(window.parent.document.hidden || document.hidden) || Ct()
@@ -1911,7 +1834,7 @@ function vt() {
 }
 function ht() {
   ;(Ne.initPersistence(),
-    pe.initSettings(),
+    settingsApi.initSettings(),
     edgePanelRemoveStaleArtifacts(),
     !edgePanelParentDoc.getElementById("edge-panel-viewport-fix") && (function () {
       var s = edgePanelParentDoc.createElement("style");
@@ -1954,7 +1877,7 @@ function ht() {
         edgePanelParentDoc.head.appendChild(edgePanelStyleHost))
     })(),
     ft(),
-    pe.syncAutoScan(),
+    settingsApi.syncAutoScan(),
     st ||
       (st = setInterval(() => {
         Ne.cleanupInvalidBalls()
@@ -2087,7 +2010,7 @@ function ht() {
         edgePanelParentDoc.addEventListener("mousedown", edgePanelKeyboardPointerHandler, { capture: !0, passive: !1 }),
         edgePanelParentDoc.addEventListener("click", edgePanelKeyboardClickHandler, !0))
     })(),
-    (0, o.watch)(pe.effectivePosition, () => {
+    (0, o.watch)(settingsApi.effectivePosition, () => {
       ot(Ne.setPanelLeftPosition, !0)
       try {
         window.setTimeout(() => {
@@ -2150,7 +2073,7 @@ function ht() {
         edgePanelClearRuntimeRegistration())
     },
     edgePanelCleanupSettings = () => {
-      pe.cleanup()
+      settingsApi.cleanup()
     },
     edgePanelRuntimeCleanup = () => {
       ;(n(), edgePanelCleanupSettings())
@@ -2505,9 +2428,9 @@ $(() => {
         opt.textContent = (it[0] === curPos ? "● " : "○ ") + it[1]
         opt.style.cssText = "padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;" + (it[0] === curPos ? "background:rgba(255,255,255,.10);" : "")
         opt.addEventListener("touchstart", function (ev) { ev.preventDefault(); ev.stopPropagation() }, { passive: false })
-        opt.addEventListener("touchend", function (ev) { ev.preventDefault(); ev.stopPropagation(); try { pe.setPanelPosition(it[0]) } catch (e) {}; closePosMenu() }, { passive: false })
+        opt.addEventListener("touchend", function (ev) { ev.preventDefault(); ev.stopPropagation(); try { settingsApi.setPanelPosition(it[0]) } catch (e) {}; closePosMenu() }, { passive: false })
         opt.addEventListener("mousedown", function (ev) { ev.preventDefault(); ev.stopPropagation() })
-        opt.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); try { pe.setPanelPosition(it[0]) } catch (e) {}; closePosMenu() })
+        opt.addEventListener("click", function (ev) { ev.preventDefault(); ev.stopPropagation(); try { settingsApi.setPanelPosition(it[0]) } catch (e) {}; closePosMenu() })
         opt.addEventListener("mouseenter", function () { opt.style.background = "rgba(255,255,255,.14)" })
         opt.addEventListener("mouseleave", function () { opt.style.background = it[0] === curPos ? "rgba(255,255,255,.10)" : "transparent" })
         pop.appendChild(opt)
