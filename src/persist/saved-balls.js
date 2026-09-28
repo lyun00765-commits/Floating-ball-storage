@@ -66,17 +66,17 @@ export function markBallRestored(e) {
 }
 
 export function initPersistence() {
-    if (!persistenceInitialized) {
-      persistenceInitialized = !0
-      try {
-        const t = getOwnScriptId(),
-          n = getVariables({ type: "script", script_id: t }),
-          a = persistSchema.parse(n)
-        ;(a.savedBalls.length > 0 && (pendingRestoreBalls.value = klona(a.savedBalls)),
-          a.releasedFingerprints && a.releasedFingerprints.length > 0 && setReleased(a.releasedFingerprints))
-      } catch {}
-    }
+  if (!persistenceInitialized) {
+    persistenceInitialized = !0
+    try {
+      const t = getOwnScriptId(),
+        n = getVariables({ type: "script", script_id: t }),
+        a = persistSchema.parse(n)
+      ;(a.savedBalls.length > 0 && (pendingRestoreBalls.value = klona(a.savedBalls)),
+        a.releasedFingerprints && a.releasedFingerprints.length > 0 && setReleased(a.releasedFingerprints))
+    } catch {}
   }
+}
 
 /** 开始一批「找回」：期间抑制逐条写盘 */
 export function beginRestoreBatch() {
