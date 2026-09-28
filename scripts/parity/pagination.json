@@ -1,0 +1,37 @@
+{
+  "base": "9a96308",
+  "file": "src/panel/pagination.js",
+  "rename": {
+    "S": "ballContainer",
+    "layer": "pageLayer",
+    "fbPageIndex": "pageIndex",
+    "fbPageCount": "pageCount",
+    "FB_PER_PAGE": "PER_PAGE",
+    "fbPerPage": "perPage",
+    "fbIsHoriz": "isHorizontal",
+    "fbCreatePage": "createPage",
+    "fbAppendBall": "appendBall",
+    "fbRebuildLayer": "rebuild",
+    "fbReorient": "reorient",
+    "fbApplyPage": "applyPage",
+    "fbGoPage": "goPage",
+    "fbUpdateArrows": "updateArrows",
+    "fbCompactPages": "compact",
+    "fbCompactAfterRemove": "compactAfterRemove",
+    "k": "getContainer"
+  },
+  "expect": {
+    "perPage": "fbPerPage",
+    "isHorizontal": "fbIsHoriz",
+    "createPage": "fbCreatePage",
+    "appendBall": "fbAppendBall",
+    "rebuild": "fbRebuildLayer",
+    "reorient": "fbReorient",
+    "applyPage": "fbApplyPage",
+    "goPage": "fbGoPage",
+    "updateArrows": "fbUpdateArrows",
+    "compact": "fbCompactPages",
+    "compactAfterRemove": "fbCompactAfterRemove",
+    "getContainer": "k"
+  }
+}

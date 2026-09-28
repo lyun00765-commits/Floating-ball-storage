@@ -1,0 +1,9 @@
+{
+  "base": "8856bb0",
+  "file": "src/core/element-info.js",
+  "rename": { "i": "getElementIcon", "l": "getElementName" },
+  "expect": {
+    "getElementIcon": "i",
+    "getElementName": "l"
+  }
+}

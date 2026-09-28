@@ -1,0 +1,12 @@
+{
+  "base": "8856bb0",
+  "file": "src/core/dom.js",
+  "rename": { "r": "isFloatingBoxElement" },
+  "expect": {
+    "isFloatingBoxElement": "r",
+    "collectIframeFrames": "collectIframeFrames",
+    "collectIframeDocs": "collectIframeDocs",
+    "elementsFromPointAcrossFrames": "elementsFromPointAcrossFrames",
+    "composeTransform": "composeTransform"
+  }
+}
