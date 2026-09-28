@@ -13,7 +13,7 @@ import { settingsApi } from '../settings.js'
 import { extractFingerprint } from '../core/fingerprint.js'
 import { isReleasedFingerprint } from '../persist/released.js'
 import { getContainer } from '../panel/pagination.js'
-import { getNameTokens, isPopupLikeName } from './name-exclusions.js'
+import { getNameTokens, isPopupLikeName, CLOSE_BUTTON_PATTERN } from './name-exclusions.js'
 
 // ==== 悬浮球识别参数（可按需微调，数值越严格越保守）====
 export const BALL_SIZE_MIN = 20 // 悬浮球最小边长(px)
@@ -34,6 +34,10 @@ export function isFloatingBallCandidate(e, ownScriptId) {
   // 排除常见的弹层/菜单/下拉/提示/翻页控件（避免误补点开后弹出的子元素）
   const tokens = getNameTokens(e)
   if (isPopupLikeName(tokens)) return !1
+  // 关闭类按钮（.close-btn / fa-times / dismiss …）：尺寸小、常为 fixed 或 absolute、
+  // 光标常是 pointer，很容易凑够打分阈值被误收。手动点选一直有这条排除，
+  // 自动扫描此前漏了（技术债 A1），这里补上。
+  if (CLOSE_BUTTON_PATTERN.test(tokens)) return !1
 
   if (e.hasAttribute("data-edge-panel-ignore")) return !1
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1

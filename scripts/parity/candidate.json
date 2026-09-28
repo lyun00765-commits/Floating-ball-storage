@@ -5,7 +5,7 @@
   "expect": {
     "isFloatingBallCandidate": "isFloatingBallCandidate"
   },
-  "notes": "识别规则纯搬运（基线中本就是语义化命名）。常量链由 `const A = 1,` 形式拆为独立 export 语句，不影响函数体。 已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。",
+  "notes": "识别规则纯搬运（基线中本就是语义化命名）。常量链由 `const A = 1,` 形式拆为独立 export 语句，不影响函数体。 已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 【注意】本次含一处行为修正：新增关闭按钮排除（技术债 A1），已作为独立 rewrite 登记。",
   "rewrites": {
     "isFloatingBallCandidate": [
       {
@@ -17,6 +17,11 @@
         "desc": "弹层/翻页排除改用共享的 isPopupLikeName()（两条正则字面量在 name-exclusions.js 中逐字保留）",
         "find": "  if (\n    /(?:^|\\s|_|-)(?:popover|popup|dropdown|dropdown-menu|drop-down|menu|tooltip|popper|listbox|context-menu|contextmenu|select-options|abs-panel|floating-panel-options|submenu|sub-menu|option-list|picker|preview-nav|prev|next|previous|carousel|slide|gallery-nav|img-nav|image-nav)(?:\\s|_|-|$)/.test(\n      tokens.toLowerCase(),\n    ) ||\n    /(上一张|下一张|上一页|下一页|上一首|下一首|previous|next)/.test(tokens.toLowerCase())\n  )\n    return !1",
         "replace": "  if (isPopupLikeName(tokens)) return !1"
+      },
+      {
+        "desc": "【行为修正】新增关闭按钮排除：原自动扫描会把 .close-btn / fa-times 这类元素误收（技术债 A1）",
+        "find": "  const tokens = getNameTokens(e)\n  if (isPopupLikeName(tokens)) return !1\n",
+        "replace": "  const tokens = getNameTokens(e)\n  if (isPopupLikeName(tokens)) return !1\n  // 关闭类按钮（.close-btn / fa-times / dismiss …）：尺寸小、常为 fixed 或 absolute、\n  // 光标常是 pointer，很容易凑够打分阈值被误收。手动点选一直有这条排除，\n  // 自动扫描此前漏了（技术债 A1），这里补上。\n  if (CLOSE_BUTTON_PATTERN.test(tokens)) return !1\n"
       }
     ]
   }
