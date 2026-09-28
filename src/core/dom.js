@@ -59,7 +59,12 @@ export function composeTransform(e, t) {
   const n = e.match(/^matrix\(([^)]+)\)$/)
   if (n) {
     const a = n[1].split(",").map((e) => parseFloat(e))
-    if (a.length >= 6 && 1 === a[0] && 0 === a[1] && 0 === a[2] && 1 === a[3]) return s
+    // b、c 均为 0 说明没有旋转/倾斜，此时缩放由本函数接管：直接**替换**而不是拼接。
+    // 浏览器把 transform 一律算成 matrix 形式，若原值里已含上一次的缩放（例如
+    // matrix(0.68, 0, 0, 0.68, 0, 0)），拼接就变成两次缩放相乘——反复收纳或拖拽
+    // 同一个球时它会越缩越小（技术债 A3）。
+    // 注意：含旋转的情况仍走拼接，这类元素极少见，暂不处理。
+    if (a.length >= 6 && 0 === a[1] && 0 === a[2]) return s
   }
   return `${e} ${s}`
 }

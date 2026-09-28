@@ -1,12 +1,24 @@
 {
   "base": "8856bb0",
   "file": "src/core/dom.js",
-  "rename": { "r": "isFloatingBoxElement" },
+  "rename": {
+    "r": "isFloatingBoxElement"
+  },
   "expect": {
     "isFloatingBoxElement": "r",
     "collectIframeFrames": "collectIframeFrames",
     "collectIframeDocs": "collectIframeDocs",
     "elementsFromPointAcrossFrames": "elementsFromPointAcrossFrames",
     "composeTransform": "composeTransform"
-  }
+  },
+  "rewrites": {
+    "composeTransform": [
+      {
+        "desc": "【行为修正】纯缩放矩阵改为替换而非拼接：原逻辑只对「纯平移」替换，导致 getComputedStyle 读回的上次缩放被再次叠加（技术债 A3）",
+        "find": "if (a.length >= 6 && 1 === a[0] && 0 === a[1] && 0 === a[2] && 1 === a[3]) return s",
+        "replace": "// b、c 均为 0 说明没有旋转/倾斜，此时缩放由本函数接管：直接**替换**而不是拼接。\n    // 浏览器把 transform 一律算成 matrix 形式，若原值里已含上一次的缩放（例如\n    // matrix(0.68, 0, 0, 0.68, 0, 0)），拼接就变成两次缩放相乘——反复收纳或拖拽\n    // 同一个球时它会越缩越小（技术债 A3）。\n    // 注意：含旋转的情况仍走拼接，这类元素极少见，暂不处理。\n    if (a.length >= 6 && 0 === a[1] && 0 === a[2]) return s"
+      }
+    ]
+  },
+  "notes": "isFloatingBoxElement 为纯搬运。composeTransform 含一处行为修正（A3），已登记 rewrites。"
 }
