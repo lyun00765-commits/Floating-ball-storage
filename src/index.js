@@ -9,6 +9,17 @@ import {
   composeTransform,
 } from "./core/dom.js"
 import { getElementIcon, getElementName } from "./core/element-info.js"
+import {
+  setBallContainer,
+  appendBall,
+  compactAfterRemove,
+  reorient,
+  goPage,
+  getPageState,
+  getContainer,
+  getBallsInOrder,
+  containsBall,
+} from "./panel/pagination.js"
 
 /** Vue SFC 编译产物的 scopeId 附加（原 webpack 模块 502 的内联版） */
 function withScopeId(component, attrs) {
@@ -245,126 +256,6 @@ const h = new Set([
   B = new WeakMap(),
   E = new WeakMap(),
   Pv = new Map()
-let S = null
-let layer = null
-let fbPageIndex = 0
-let fbPageCount = 1
-const FB_PER_PAGE = { horizontal: 3, vertical: 5 }
-function fbPerPage() {
-  return fbIsHoriz() ? FB_PER_PAGE.horizontal : FB_PER_PAGE.vertical
-}
-function fbIsHoriz() {
-  if (!S) return !1
-  // horizontal flag 在根容器 .edge-panel-root 上, 向上查找
-  let n = S
-  while (n && !(n.classList && n.classList.contains("edge-panel-root"))) n = n.parentNode
-  return !!(n && n.classList && n.classList.contains("edge-panel-root--horizontal"))
-}
-function fbCreatePage() {
-  const p = window.parent.document.createElement("div")
-  p.className = "fb-page"
-  p.style.display = "flex"
-  p.style.flexDirection = fbIsHoriz() ? "row" : "column"
-  p.style.alignItems = "center"
-  p.style.justifyContent = "center"
-  p.style.flexShrink = "0"
-  p.setAttribute("data-fb-page", String(layer ? layer.children.length : 0))
-  if (layer) layer.appendChild(p)
-  return p
-}
-function fbCurrentPage() {
-  if (!layer) return null
-  return layer.children.length ? layer.children[0] : null
-}
-function fbAppendBall(el, before) {
-  if (!layer) return
-  if (before && before.parentNode && layer.contains(before)) {
-    before.parentNode.insertBefore(el, before)
-    fbRebuildLayer()
-    return
-  }
-  let page = layer.children.length ? layer.children[layer.children.length - 1] : null
-  if (!page || page.children.length >= fbPerPage()) page = fbCreatePage()
-  page.appendChild(el)
-  fbRebuildLayer()
-}
-function fbRebuildLayer() {
-  if (!layer) return
-  fbPageCount = Math.max(1, layer.children.length)
-  if (fbPageIndex >= fbPageCount) fbPageIndex = fbPageCount - 1
-  if (fbPageIndex < 0) fbPageIndex = 0
-  fbApplyPage()
-  fbUpdateArrows()
-}
-function fbReorient() {
-  if (!layer) return
-  const horiz = fbIsHoriz()
-  layer.style.flexDirection = horiz ? "row" : "column"
-  for (let k = 0; k < layer.children.length; k++) {
-    layer.children[k].style.flexDirection = horiz ? "row" : "column"
-  }
-}
-function fbApplyPage() {
-  if (!layer) return
-  const horiz = fbIsHoriz()
-  for (let k = 0; k < layer.children.length; k++) {
-    const p = layer.children[k]
-    p.style.flexDirection = horiz ? "row" : "column"
-    p.style.display = k === fbPageIndex ? "flex" : "none"
-  }
-}
-function fbGoPage(d) {
-  fbPageIndex = Math.max(0, Math.min(fbPageCount - 1, fbPageIndex + d))
-  fbApplyPage()
-  fbUpdateArrows()
-}
-function fbUpdateArrows() {
-  const doc = window.parent && window.parent.document ? window.parent.document : document
-  const prev = doc.querySelector("[data-fb-page-prev]")
-  const next = doc.querySelector("[data-fb-page-next]")
-  if (prev) prev.classList.toggle("fb-arrow--disabled", fbPageIndex <= 0)
-  if (next) next.classList.toggle("fb-arrow--disabled", fbPageIndex >= fbPageCount - 1)
-}
-function fbCompactPages() {
-  if (!layer) return
-  // 按视觉顺序收集所有页里的球
-  const balls = []
-  for (let i = 0; i < layer.children.length; i++) {
-    const p = layer.children[i]
-    for (let j = 0; j < p.children.length; j++) balls.push(p.children[j])
-  }
-  // 清空所有页
-  while (layer.firstChild) layer.removeChild(layer.firstChild)
-  // 重新顺位打包：每页填满 fbPerPage() 个，后面球自动补位
-  const per = fbPerPage(),
-    doc = window.parent && window.parent.document ? window.parent.document : document,
-    horiz = fbIsHoriz()
-  let page = null
-  balls.forEach((b) => {
-    if (!page || page.children.length >= per) {
-      page = doc.createElement("div")
-      page.className = "fb-page"
-      page.style.display = "flex"
-      page.style.flexDirection = horiz ? "row" : "column"
-      page.style.alignItems = "center"
-      page.style.justifyContent = "center"
-      page.style.flexShrink = "0"
-      layer.appendChild(page)
-    }
-    page.appendChild(b)
-  })
-  fbRebuildLayer()
-  fbApplyPage()
-  fbUpdateArrows()
-}
-function fbCompactAfterRemove(el) {
-  if (!el || !el.parentNode) return
-  el.parentNode.removeChild(el)
-  fbCompactPages()
-}
-function k() {
-  return S
-}
 function P(e, t) {
   try {
     const n = window.parent.$
@@ -579,7 +470,7 @@ function q(e) {
   r && (e.removeEventListener("click", r, !0), x.delete(e), (t = !0))
 }
 function O(e) {
-  if (!S) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
+  if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
   const t = e.element
   let n = t.offsetWidth,
     a = t.offsetHeight
@@ -593,7 +484,7 @@ function O(e) {
     tr = composeTransform(window.parent.getComputedStyle(t).transform, o)
   ;(P(t, e.id),
     t.setAttribute("data-edge-ball-id", e.id),
-    fbAppendBall(t),
+    appendBall(t),
     F(t),
     I(t, {
       position: ["relative", "important"],
@@ -636,7 +527,7 @@ function V(e) {
   })(t),
     q(t),
     t.removeAttribute("data-edge-ball-id"),
-    fbCompactAfterRemove(t),
+    compactAfterRemove(t),
     (t.style.cssText = e.originalStyle),
     (t.style.position = e.originalPosition?.positionValue || "fixed"),
     !e.originalStyle &&
@@ -676,7 +567,7 @@ function V(e) {
     })(t, e.id))
 }
 function G(e, t) {
-  if (!S) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
+  if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
   const n = e.element
   let a = n.offsetWidth,
     o = n.offsetHeight
@@ -688,7 +579,7 @@ function G(e, t) {
   const r = Math.min(34 / a, 34 / o),
     i = (a * (1 - r)) / 2,
     tr = composeTransform(window.parent.getComputedStyle(n).transform, r)
-  ;(fbAppendBall(n, t),
+  ;(appendBall(n, t),
     n.setAttribute("data-edge-ball-id", e.id),
     F(n),
     I(n, {
@@ -792,11 +683,7 @@ function ee(e) {
   try {
     const t = [],
       a = new Map()
-    if (layer) {
-      let idx = 0
-      for (const page of Array.from(layer.children))
-        for (const ball of Array.from(page.children)) a.set(ball, idx++)
-    }
+    getBallsInOrder().forEach((ball, idx) => a.set(ball, idx))
     for (const n of Object.values(e))
       if (isValidFingerprint(n.fingerprint)) {
         const e = {
@@ -890,7 +777,7 @@ const pe = {
       try {
         window.setTimeout(() => {
           try {
-            fbReorient()
+            reorient()
           } catch (err) {}
         }, 40)
       } catch (err) {}
@@ -949,7 +836,7 @@ function Fe(e, t) {
   const n = ue.value[e]
   if (n) {
     const e = n.element,
-      o = e && layer && layer.contains(e) ? e.nextSibling : null,
+      o = containsBall(e) ? e.nextSibling : null,
       r = window.parent.getComputedStyle(t)
     ;((n.originalParent = t.parentElement),
       (n.originalNextSibling = t.nextSibling),
@@ -1000,7 +887,7 @@ const Ne = {
     else if (ue.value[e.id]) Fe(e.id, e.element)
     else {
       if (((ue.value = { ...ue.value, [e.id]: e }), void 0 !== e.order)) {
-        const t = k()
+        const t = getContainer()
         if (t) {
           const n = Object.values(ue.value)
             .filter((t) => t.id !== e.id && void 0 !== t.order)
@@ -1266,30 +1153,10 @@ const Ne = {
   toggleCaptureMode: function () {
     Ce.value = !Ce.value
   },
-  setBallContainer: function (e) {
-    S = e
-    layer = null
-    if (e) {
-      const horiz = (function () {
-        let n = e
-        while (n && !(n.classList && n.classList.contains("edge-panel-root"))) n = n.parentNode
-        return !!(n && n.classList && n.classList.contains("edge-panel-root--horizontal"))
-      })()
-      layer = window.parent.document.createElement("div")
-      layer.className = "fb-pages-layer"
-      layer.style.display = "flex"
-      layer.style.flexDirection = horiz ? "row" : "column"
-      fbCreatePage()
-      e.appendChild(layer)
-    }
-    fbPageIndex = 0
-    fbRebuildLayer()
-  },
-  fbGoPage,
-  fbGetPageState: function () {
-    return { index: fbPageIndex, count: fbPageCount, per: fbPerPage() }
-  },
-  getBallContainer: k,
+  setBallContainer,
+  goPage,
+  fbGetPageState: getPageState,
+  getBallContainer: getContainer,
   moveBallToContainer: O,
   moveBallBackToOriginal: V,
   hideFloatingBall: L,
@@ -1863,7 +1730,7 @@ const Ge = { class: "panel-icons" },
                                 class: "fb-arrow fb-arrow--prev",
                                 "data-fb-page-prev": "",
                                 "aria-hidden": "true",
-                                onClick: () => fbGoPage(-1),
+                                onClick: () => goPage(-1),
                               },
                               [(0, o.createTextVNode)("\u2039")],
                             ),
@@ -1888,7 +1755,7 @@ const Ge = { class: "panel-icons" },
                                 class: "fb-arrow fb-arrow--next",
                                 "data-fb-page-next": "",
                                 "aria-hidden": "true",
-                                onClick: () => fbGoPage(1),
+                                onClick: () => goPage(1),
                               },
                               [(0, o.createTextVNode)("\u203a")],
                             ),
@@ -2516,7 +2383,7 @@ function isFloatingBallCandidate(e, ownScriptId) {
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1
   if ((e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")) === ownScriptId) return !1
   if ("auto" === pe.getCaptureMode() && isReleasedFp(extractFingerprint(e))) return !1
-  if (S && S.contains(e)) return !1
+  if (getContainer() && getContainer().contains(e)) return !1
   if (e.closest(".edge-panel-root,[data-edge-panel-owner]")) return !1
 
   const rect = e.getBoundingClientRect(),
@@ -2906,7 +2773,7 @@ function ht() {
       try {
         window.setTimeout(() => {
           try {
-            fbReorient()
+            reorient()
           } catch (err) {}
         }, 40)
       } catch (err) {}
