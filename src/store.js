@@ -12,6 +12,7 @@
  */
 
 import { settingsApi } from './settings.js'
+import { notify } from './core/platform.js'
 import { extractFingerprint, fingerprintsMatch, isValidFingerprint, getClassSelector } from './core/fingerprint.js'
 import { goPage, getPageState, getContainer, containsBall, setBallContainer } from './panel/pagination.js'
 import {
@@ -226,7 +227,7 @@ export const store = {
               ;(n.removeAttribute("data-edge-panel-ignore"), o.removeAttribute("data-edge-panel-ignore"), t())
             }, 120))
         }, 250)
-        ;(setTimeout(() => clearInterval(h), 15000), toastr.info(`已在原位置打开: ${ballName}`))
+        ;(setTimeout(() => clearInterval(h), 15000), notify.info(`已在原位置打开: ${ballName}`))
         return
       }
       if (n) {
@@ -237,7 +238,7 @@ export const store = {
         }, 250)
         setTimeout(() => clearInterval(o), 15000)
       }
-      toastr.info(`已在原位置打开: ${ballName}`)
+      notify.info(`已在原位置打开: ${ballName}`)
       return
     }
     const l = (e, t, n = {}) => {
@@ -293,7 +294,7 @@ export const store = {
         }
       }, 48),
       s(),
-      toastr.info(`已在原位置打开: ${ballName}`))
+      notify.info(`已在原位置打开: ${ballName}`))
   },
   releaseAllBalls: releaseAllBalls,
   releaseAllBallsWithoutSaving: function () {

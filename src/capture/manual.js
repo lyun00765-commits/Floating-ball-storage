@@ -13,6 +13,7 @@ import { collectIframeDocs, elementsFromPointAcrossFrames } from '../core/dom.js
 import { extractFingerprint } from '../core/fingerprint.js'
 import { getElementName } from '../core/element-info.js'
 import { removeReleased } from '../persist/released.js'
+import { notify } from '../core/platform.js'
 import {
   getNameTokens,
   isPopupLikeName,
@@ -131,7 +132,7 @@ function captureAtPoint(e, t, n, a, o) {
       pool.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.area - a.area))
       return pool[0].element
     })(r, n)
-    e && a(e) ? (removeReleased(extractFingerprint(e)), toastr.success(`已捕获: ${getElementName(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
+    e && a(e) ? (removeReleased(extractFingerprint(e)), notify.success(`已捕获: ${getElementName(e)}`)) : e || notify.warning("请点击一个悬浮元素")
   }
   o()
 }

@@ -9,6 +9,13 @@
     "endCapturePick": "endCapturePick"
   },
   "rewrites": {
+    "captureAtPoint": [
+      {
+        "desc": "【容错】toastr.* 改用 core/platform 的 notify.*（A4）：宿主未注入时不会抛错，避免遮断后续逻辑（如移除捕获遮罩）",
+        "find": "toastr.",
+        "replace": "notify."
+      }
+    ],
     "isManualCaptureCandidate": [
       {
         "desc": "命名 token 拼接改用共享的 getNameTokens()",
@@ -32,5 +39,5 @@
       }
     ]
   },
-  "notes": "已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。"
+  "notes": "已登记 rewrites：命名排除正则抽到 capture/name-exclusions.js 共享；正则字面量与判定组合均保持原样（等价改写，非行为变更）。 toastr 调用统一改走 notify 安全封装（A4），已登记 rewrites。"
 }

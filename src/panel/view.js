@@ -13,7 +13,7 @@ import { settingsApi } from '../settings.js'
 import { themeApi } from '../theme.js'
 import { addReleased } from '../persist/released.js'
 import { extractFingerprint, fingerprintsMatch } from '../core/fingerprint.js'
-import { getOwnScriptId } from '../core/platform.js'
+import { getOwnScriptId, notify } from '../core/platform.js'
 import { goPage } from './pagination.js'
 import { pendingRestoreBalls } from '../persist/saved-balls.js'
 
@@ -169,7 +169,7 @@ const Ge = { class: "panel-icons" },
               b(n.id),
               e.removeAttribute("data-edge-panel-ignore"),
               (filterPendingBall(n.fingerprint, e)),
-              void toastr.info(`已释放悬浮球: ${n.name}`),
+              void notify.info(`已释放悬浮球: ${n.name}`),
               !0
             )
         const n = e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")
@@ -180,7 +180,7 @@ const Ge = { class: "panel-icons" },
           b(`ball_${n}`),
           e.removeAttribute("data-edge-panel-ignore"),
           (filterPendingBall(null, e)),
-          toastr.info("已释放悬浮球"),
+          notify.info("已释放悬浮球"),
           !0)
         )
       }
@@ -227,12 +227,12 @@ const Ge = { class: "panel-icons" },
                 deps.store.autoCaptureEnabled.value = r
               }
               const a = Object.keys(deps.store.capturedBalls.value).length
-              toastr.success(
+              notify.success(
                 a > 0 ? (a > t ? `已全部捕捉 ${a - t} 个悬浮球（共 ${a} 个）` : `当前已收纳 ${a} 个悬浮球`) : "未发现可捕捉的悬浮球",
               )
             } else {
               const t = Object.values(deps.store.capturedBalls.value)
-              if (0 === t.length) return void toastr.info("当前没有已收纳的悬浮球")
+              if (0 === t.length) return void notify.info("当前没有已收纳的悬浮球")
               for (const e of t) {
                 try {
                   addReleased(e.fingerprint)
@@ -241,7 +241,7 @@ const Ge = { class: "panel-icons" },
                   e.element && e.element.removeAttribute("data-edge-panel-ignore")
                 } catch {}
               }
-              toastr.info(`已全部释放 ${t.length} 个悬浮球`)
+              notify.info(`已全部释放 ${t.length} 个悬浮球`)
             }
           } catch (e) {
             console.warn("[集成控件] 长按操作失败:", e)
@@ -270,12 +270,12 @@ const Ge = { class: "panel-icons" },
         if (aMode === captureModeActive.value) return
         captureModeActive.value = aMode
         settingsApi.setCaptureMode(aMode)
-        toastr.info(aMode === "auto" ? "已切换到自动模式：悬浮球将自动收纳" : "已切换到手动模式：长按捕捉=全部收纳")
+        notify.info(aMode === "auto" ? "已切换到自动模式：悬浮球将自动收纳" : "已切换到手动模式：长按捕捉=全部收纳")
       }
       function clearMemoryUI() {
         const t = settingsApi.getReleasedFpCount()
-        if (0 === t) return void toastr.info("当前无记忆")
-        ;(settingsApi.clearReleasedFps(), toastr.success(`已清空 ${t} 条释放记忆`))
+        if (0 === t) return void notify.info("当前无记忆")
+        ;(settingsApi.clearReleasedFps(), notify.success(`已清空 ${t} 条释放记忆`))
       }
       function handleContainerTouchStart(e) {
         const n = e.touches && e.touches[0]
