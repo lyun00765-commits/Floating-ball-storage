@@ -1078,11 +1078,11 @@ const Ge = { class: "panel-icons" },
   })
 injectStyles()
 const Je = withScopeId(Re, [["__scopeId", "data-v-da7fb8b4"]])
-let Qe = null,
-  He = null,
-  Ze = null,
-  et = null,
-  edgePanelViewportResizeHandler = null,
+let Qe = null
+let He = null
+let Ze = null
+let et = null
+let edgePanelViewportResizeHandler = null,
   edgePanelViewportScrollHandler = null,
   edgePanelFocusHandler = null,
   edgePanelKeyboardPointerHandler = null,
