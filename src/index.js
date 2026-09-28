@@ -20,6 +20,7 @@ import {
 } from "./persist/saved-balls.js"
 import { settingsApi, setCaptureModeChangeHandler } from "./settings.js"
 import { themeApi } from "./theme.js"
+import { parentWin, parentDoc, runtimeId, runtimeOwner, runtimeKeys, currentFrameName } from "./runtime-identity.js"
 import {
   setCapturedBallClickHandler,
   moveBallToContainer,
@@ -1094,56 +1095,30 @@ let edgePanelViewportResizeHandler = null,
   edgePanelHostClickHandler = null,
   edgePanelArtifactMonitor = null,
   edgePanelStyleHost = null
-const edgePanelParentWin = window.parent,
-  edgePanelParentDoc = edgePanelParentWin.document,
-  edgePanelRuntimeId = (function () {
-    try {
-      return getScriptId()
-    } catch (e) {
-      return ""
-    }
-  })(),
-  edgePanelRuntimeOwner = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-  edgePanelRuntimeKeys = ["__floating_ball_storage_runtime__", "__edge_panel_runtime__"],
-  edgePanelCurrentFrameName = (function () {
-    try {
-      return String(window?.name || "").trim()
-    } catch (e) {
-      return ""
-    }
-  })()
-try {
-  edgePanelRuntimeKeys.forEach((e) => {
-    const t = edgePanelParentWin[e]
-    t && "function" == typeof t.cleanup && t.cleanup()
-  })
-} catch (e) {
-  console.warn("[集成控件] 清理旧运行时失败:", e)
-}
 function edgePanelResolveCurrentFrame() {
   try {
     const e = window.frameElement
-    if (e && e.ownerDocument === edgePanelParentDoc) return e
+    if (e && e.ownerDocument === parentDoc) return e
   } catch (e) {}
-  if (!edgePanelCurrentFrameName || "function" != typeof edgePanelParentDoc.getElementById) return null
-  const e = edgePanelParentDoc.getElementById(edgePanelCurrentFrameName)
+  if (!currentFrameName || "function" != typeof parentDoc.getElementById) return null
+  const e = parentDoc.getElementById(currentFrameName)
   return e && "iframe" === String(e.tagName || "").toLowerCase() ? e : null
 }
 function edgePanelMarkOwned(e) {
-  return (e && e.setAttribute("data-edge-panel-owner", edgePanelRuntimeOwner), e)
+  return (e && e.setAttribute("data-edge-panel-owner", runtimeOwner), e)
 }
 function edgePanelRemoveOwnedArtifacts() {
   try {
-    edgePanelParentDoc.querySelectorAll(`[data-edge-panel-owner="${edgePanelRuntimeOwner}"]`).forEach((e) => {
+    parentDoc.querySelectorAll(`[data-edge-panel-owner="${runtimeOwner}"]`).forEach((e) => {
       e.remove()
     })
   } catch (e) {}
 }
 function edgePanelRemoveStaleArtifacts() {
-  if (!edgePanelRuntimeId) return
+  if (!runtimeId) return
   try {
-    edgePanelParentDoc
-      .querySelectorAll(`body > div[script_id="${edgePanelRuntimeId}"], head > div[script_id="${edgePanelRuntimeId}"]`)
+    parentDoc
+      .querySelectorAll(`body > div[script_id="${runtimeId}"], head > div[script_id="${runtimeId}"]`)
       .forEach((e) => {
         e.remove()
       })
@@ -1151,8 +1126,8 @@ function edgePanelRemoveStaleArtifacts() {
 }
 function edgePanelRegisterRuntime(e) {
   try {
-    edgePanelRuntimeKeys.forEach((t) => {
-      edgePanelParentWin[t] = { id: edgePanelRuntimeId, owner: edgePanelRuntimeOwner, cleanup: e }
+    runtimeKeys.forEach((t) => {
+      parentWin[t] = { id: runtimeId, owner: runtimeOwner, cleanup: e }
     })
   } catch (e) {
     console.warn("[集成控件] 注册运行时失败:", e)
@@ -1160,9 +1135,9 @@ function edgePanelRegisterRuntime(e) {
 }
 function edgePanelClearRuntimeRegistration() {
   try {
-    edgePanelRuntimeKeys.forEach((e) => {
-      const t = edgePanelParentWin[e]
-      t && t.owner === edgePanelRuntimeOwner && delete edgePanelParentWin[e]
+    runtimeKeys.forEach((e) => {
+      const t = parentWin[e]
+      t && t.owner === runtimeOwner && delete parentWin[e]
     })
   } catch (e) {}
 }
@@ -1170,11 +1145,11 @@ function edgePanelAttachFrameDetachWatcher(e) {
   if (
     edgePanelFrameObserver ||
     edgePanelRuntimeCleaned ||
-    edgePanelParentWin === window ||
+    parentWin === window ||
     "undefined" == typeof MutationObserver
   )
     return
-  const t = edgePanelParentDoc.body || edgePanelParentDoc.documentElement
+  const t = parentDoc.body || parentDoc.documentElement
   if (!t) return
   ;((edgePanelFrameObserver = new MutationObserver(() => {
     if (edgePanelRuntimeCleaned) return
@@ -1186,17 +1161,17 @@ function edgePanelAttachFrameDetachWatcher(e) {
 function edgePanelEnsureArtifacts(e) {
   if (edgePanelRuntimeCleaned) return
   let t = !1
-  ;(it && !it.isConnected && edgePanelParentDoc.body && (edgePanelParentDoc.body.appendChild(it), (t = !0)),
+  ;(it && !it.isConnected && parentDoc.body && (parentDoc.body.appendChild(it), (t = !0)),
     edgePanelStyleHost &&
       !edgePanelStyleHost.isConnected &&
-      edgePanelParentDoc.head &&
-      (edgePanelParentDoc.head.appendChild(edgePanelStyleHost), (t = !0)),
+      parentDoc.head &&
+      (parentDoc.head.appendChild(edgePanelStyleHost), (t = !0)),
     e && e(t))
 }
 function edgePanelStartArtifactMonitor(e) {
   ;(edgePanelArtifactMonitor &&
-    (edgePanelParentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
-    (edgePanelArtifactMonitor = edgePanelParentWin.setInterval(() => {
+    (parentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
+    (edgePanelArtifactMonitor = parentWin.setInterval(() => {
       edgePanelEnsureArtifacts(e)
     }, 1200)))
 }
@@ -1207,23 +1182,23 @@ function edgePanelIsOwnedNode(e) {
   return !!(
     edgePanelIsElement(e) &&
     "function" == typeof e.closest &&
-    e.closest(`[data-edge-panel-owner="${edgePanelRuntimeOwner}"]`)
+    e.closest(`[data-edge-panel-owner="${runtimeOwner}"]`)
   )
 }
 function edgePanelNodeMentionsScriptByText(e) {
-  if (!e || !edgePanelRuntimeId) return !1
+  if (!e || !runtimeId) return !1
   try {
     const t = (e.textContent || "").toLowerCase(),
-      n = edgePanelRuntimeId.toLowerCase()
+      n = runtimeId.toLowerCase()
     if (t.includes(n)) return !0
     const a = e.getAttribute?.("script_id") || ""
-    if (a === edgePanelRuntimeId) return !0
+    if (a === runtimeId) return !0
   } catch (e) {}
   return !1
 }
 function edgePanelScheduleAggressivePresenceCheck() {
   ;[120, 360, 900, 1800, 3200].forEach((e) => {
-    edgePanelParentWin.setTimeout(() => {
+    parentWin.setTimeout(() => {
       if (edgePanelRuntimeCleaned) return
       const t = edgePanelResolveCurrentFrame()
       ;(t && t.isConnected) || edgePanelRuntimeCleanup()
@@ -1231,7 +1206,7 @@ function edgePanelScheduleAggressivePresenceCheck() {
   })
 }
 function edgePanelAttachHostActionWatchers() {
-  if (edgePanelHostActionObserver || !edgePanelParentDoc.body) return
+  if (edgePanelHostActionObserver || !parentDoc.body) return
   ;((edgePanelHostClickHandler = (e) => {
     const t = e.target
     if (!edgePanelIsElement(t) || edgePanelIsOwnedNode(t)) return
@@ -1241,7 +1216,7 @@ function edgePanelAttachHostActionWatchers() {
     for (let e = 0; a && e < 5; e += 1, a = a.parentElement)
       if (edgePanelNodeMentionsScriptByText(a)) return void edgePanelScheduleAggressivePresenceCheck()
   }),
-    edgePanelParentDoc.addEventListener("click", edgePanelHostClickHandler, !0),
+    parentDoc.addEventListener("click", edgePanelHostClickHandler, !0),
     (edgePanelHostActionObserver = new MutationObserver((e) => {
       for (const t of e)
         if ("childList" === t.type)
@@ -1254,7 +1229,7 @@ function edgePanelAttachHostActionWatchers() {
               }
             }
     })),
-    edgePanelHostActionObserver.observe(edgePanelParentDoc.body, { childList: !0, subtree: !0 }))
+    edgePanelHostActionObserver.observe(parentDoc.body, { childList: !0, subtree: !0 }))
 }
 function tt() {
   const e = window.parent.document,
@@ -1280,7 +1255,7 @@ function at() {
   return n || null
 }
 function edgePanelViewportBounds() {
-  const e = edgePanelParentWin,
+  const e = parentWin,
     t = e.visualViewport
   if (t && t.width && t.height) {
     const e = t.offsetLeft || 0,
@@ -1291,7 +1266,7 @@ function edgePanelViewportBounds() {
 }
 function edgePanelFocusedInputRect() {
   try {
-    const e = edgePanelParentDoc.activeElement
+    const e = parentDoc.activeElement
     if (!e) return null
     const t = String(e.tagName || "").toLowerCase(),
       n = "textarea" === t || "input" === t || !!e.isContentEditable || !!e.closest?.('[contenteditable="true"]')
@@ -1347,7 +1322,7 @@ function edgePanelIsEdgeTabEvent(e) {
   return !!(edgePanelIsElement(t) && edgePanelIsOwnedNode(t) && t.closest?.(".edge-tab,.panel-header"))
 }
 function edgePanelSchedulePositionRefresh(e) {
-  ;[0, 80, 220, 480, 820, 1500, 2600, 4000].forEach((t) => edgePanelParentWin.setTimeout(() => ot(e, !0), t))
+  ;[0, 80, 220, 480, 820, 1500, 2600, 4000].forEach((t) => parentWin.setTimeout(() => ot(e, !0), t))
 }
 function edgePanelPreserveKeyboardToggle(e) {
   if (!settingsApi.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
@@ -1720,8 +1695,8 @@ function ht() {
   ;(Ne.initPersistence(),
     settingsApi.initSettings(),
     edgePanelRemoveStaleArtifacts(),
-    !edgePanelParentDoc.getElementById("edge-panel-viewport-fix") && (function () {
-      var s = edgePanelParentDoc.createElement("style");
+    !parentDoc.getElementById("edge-panel-viewport-fix") && (function () {
+      var s = parentDoc.createElement("style");
       s.id = "edge-panel-viewport-fix";
       s.textContent =
         "@media (min-width:769px){" +
@@ -1744,21 +1719,21 @@ function ht() {
         ".edge-tab-fade-enter-active{transition:opacity .3s ease}" +
         ".edge-tab-fade-enter-from,.edge-tab-fade-leave-to{opacity:0}" +
         "}";
-      (edgePanelParentDoc.head || edgePanelParentDoc.documentElement).appendChild(s);
+      (parentDoc.head || parentDoc.documentElement).appendChild(s);
     })(),
-    (it = edgePanelMarkOwned(edgePanelParentDoc.createElement("div"))),
-    it.setAttribute("script_id", edgePanelRuntimeId),
-    edgePanelParentDoc.body.appendChild(it),
+    (it = edgePanelMarkOwned(parentDoc.createElement("div"))),
+    it.setAttribute("script_id", runtimeId),
+    parentDoc.body.appendChild(it),
     (rt = (0, o.createApp)(Je)),
     rt.mount(it),
     (function () {
-      if (edgePanelParentDoc.head.querySelector(`div[script_id="${edgePanelRuntimeId}"]`)) return
-      ;((edgePanelStyleHost = edgePanelMarkOwned(edgePanelParentDoc.createElement("div"))),
-        edgePanelStyleHost.setAttribute("script_id", edgePanelRuntimeId),
+      if (parentDoc.head.querySelector(`div[script_id="${runtimeId}"]`)) return
+      ;((edgePanelStyleHost = edgePanelMarkOwned(parentDoc.createElement("div"))),
+        edgePanelStyleHost.setAttribute("script_id", runtimeId),
         document.querySelectorAll("head > style").forEach((t) => {
           edgePanelStyleHost.appendChild(t.cloneNode(!0))
         }),
-        edgePanelParentDoc.head.appendChild(edgePanelStyleHost))
+        parentDoc.head.appendChild(edgePanelStyleHost))
     })(),
     ft(),
     settingsApi.syncAutoScan(),
@@ -1869,7 +1844,7 @@ function ht() {
         Ze.observe(o.body, { childList: !0, subtree: !0 }))
     })(Ne.setPanelLeftPosition),
     (function (e) {
-      const t = edgePanelParentWin.visualViewport
+      const t = parentWin.visualViewport
       if (t) {
         ;((edgePanelViewportResizeHandler = () => ot(e, !0)),
           (edgePanelViewportScrollHandler = () => ot(e, !0)),
@@ -1877,22 +1852,22 @@ function ht() {
           t.addEventListener("scroll", edgePanelViewportScrollHandler, { passive: !0 }))
       }
       ;((edgePanelFocusHandler = () => edgePanelSchedulePositionRefresh(e)),
-        edgePanelParentDoc.addEventListener("focusin", edgePanelFocusHandler, !0),
-        edgePanelParentDoc.addEventListener("focusout", edgePanelFocusHandler, !0))
+        parentDoc.addEventListener("focusin", edgePanelFocusHandler, !0),
+        parentDoc.addEventListener("focusout", edgePanelFocusHandler, !0))
     })(Ne.setPanelLeftPosition),
     (function () {
       ;((edgePanelKeyboardPointerHandler = (e) => edgePanelPreserveKeyboardToggle(e)),
         (edgePanelKeyboardClickHandler = (e) => edgePanelSuppressGuardedClick(e)),
-        edgePanelParentDoc.addEventListener("pointerdown", edgePanelKeyboardPointerHandler, {
+        parentDoc.addEventListener("pointerdown", edgePanelKeyboardPointerHandler, {
           capture: !0,
           passive: !1,
         }),
-        edgePanelParentDoc.addEventListener("touchstart", edgePanelKeyboardPointerHandler, {
+        parentDoc.addEventListener("touchstart", edgePanelKeyboardPointerHandler, {
           capture: !0,
           passive: !1,
         }),
-        edgePanelParentDoc.addEventListener("mousedown", edgePanelKeyboardPointerHandler, { capture: !0, passive: !1 }),
-        edgePanelParentDoc.addEventListener("click", edgePanelKeyboardClickHandler, !0))
+        parentDoc.addEventListener("mousedown", edgePanelKeyboardPointerHandler, { capture: !0, passive: !1 }),
+        parentDoc.addEventListener("click", edgePanelKeyboardClickHandler, !0))
     })(),
     (0, o.watch)(settingsApi.effectivePosition, () => {
       ot(Ne.setPanelLeftPosition, !0)
@@ -1921,26 +1896,26 @@ function ht() {
         Ze && (Ze.disconnect(), (Ze = null)),
         edgePanelFrameObserver && (edgePanelFrameObserver.disconnect(), (edgePanelFrameObserver = null)),
         edgePanelArtifactMonitor &&
-          (edgePanelParentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
+          (parentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
         edgePanelHostActionObserver && (edgePanelHostActionObserver.disconnect(), (edgePanelHostActionObserver = null)),
         edgePanelHostClickHandler &&
-          (edgePanelParentDoc.removeEventListener("click", edgePanelHostClickHandler, !0),
+          (parentDoc.removeEventListener("click", edgePanelHostClickHandler, !0),
           (edgePanelHostClickHandler = null)),
         $(window).off(".edgePanelLifecycle"),
         $(window.parent).off(".edgePanelLifecycle"),
         $(window.parent).off("resize.edgePanel"))
-      const e = edgePanelParentWin.visualViewport
+      const e = parentWin.visualViewport
       ;(e && edgePanelViewportResizeHandler && e.removeEventListener("resize", edgePanelViewportResizeHandler),
         e && edgePanelViewportScrollHandler && e.removeEventListener("scroll", edgePanelViewportScrollHandler),
         edgePanelFocusHandler &&
-          (edgePanelParentDoc.removeEventListener("focusin", edgePanelFocusHandler, !0),
-          edgePanelParentDoc.removeEventListener("focusout", edgePanelFocusHandler, !0)),
+          (parentDoc.removeEventListener("focusin", edgePanelFocusHandler, !0),
+          parentDoc.removeEventListener("focusout", edgePanelFocusHandler, !0)),
         edgePanelKeyboardPointerHandler &&
-          (edgePanelParentDoc.removeEventListener("pointerdown", edgePanelKeyboardPointerHandler, !0),
-          edgePanelParentDoc.removeEventListener("touchstart", edgePanelKeyboardPointerHandler, !0),
-          edgePanelParentDoc.removeEventListener("mousedown", edgePanelKeyboardPointerHandler, !0)),
+          (parentDoc.removeEventListener("pointerdown", edgePanelKeyboardPointerHandler, !0),
+          parentDoc.removeEventListener("touchstart", edgePanelKeyboardPointerHandler, !0),
+          parentDoc.removeEventListener("mousedown", edgePanelKeyboardPointerHandler, !0)),
         edgePanelKeyboardClickHandler &&
-          edgePanelParentDoc.removeEventListener("click", edgePanelKeyboardClickHandler, !0),
+          parentDoc.removeEventListener("click", edgePanelKeyboardClickHandler, !0),
         (edgePanelViewportResizeHandler = null),
         (edgePanelViewportScrollHandler = null),
         (edgePanelFocusHandler = null),

@@ -1,0 +1,11 @@
+{
+  "base": "defc1c4",
+  "file": "src/runtime-identity.js",
+  "rename": {
+    "edgePanelParentWin": "parentWin", "edgePanelParentDoc": "parentDoc",
+    "edgePanelRuntimeId": "runtimeId", "edgePanelRuntimeOwner": "runtimeOwner",
+    "edgePanelRuntimeKeys": "runtimeKeys", "edgePanelCurrentFrameName": "currentFrameName"
+  },
+  "expect": {},
+  "notes": "变量声明区 + 模块加载副作用，无函数可比对；由 /workspace/3_sandbox/verify-identity.mjs 逐行核对。另：esbuild（npm run check）会校验具名导出，lint 不会。"
+}
