@@ -34,3 +34,14 @@ try {
 } catch (e) {
   console.warn("[集成控件] 清理旧运行时失败:", e)
 }
+
+/** 在父窗口里定位「本脚本所在的 iframe」节点（用于判断自己是否还存活） */
+export function resolveCurrentFrame() {
+  try {
+    const e = window.frameElement
+    if (e && e.ownerDocument === parentDoc) return e
+  } catch (e) {}
+  if (!currentFrameName || "function" != typeof parentDoc.getElementById) return null
+  const e = parentDoc.getElementById(currentFrameName)
+  return e && "iframe" === String(e.tagName || "").toLowerCase() ? e : null
+}

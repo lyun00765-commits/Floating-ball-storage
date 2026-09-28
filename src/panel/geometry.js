@@ -9,8 +9,8 @@
  * 另处理键盘弹出（移动端 visualViewport 缩小时，top/bottom 改贴视口）。
  */
 
-import { parentWin, parentDoc } from "./runtime-identity.js"
-import { settingsApi } from "./settings.js"
+import { parentWin, parentDoc } from "../runtime-identity.js"
+import { settingsApi } from "../settings.js"
 export function resolveAnchorBottom() {
   const e = window.parent.document,
     t = e.querySelector("#sheld")

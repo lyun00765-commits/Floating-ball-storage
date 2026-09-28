@@ -22,6 +22,22 @@ import { settingsApi, setCaptureModeChangeHandler } from "./settings.js"
 import { themeApi } from "./theme.js"
 import { parentWin, parentDoc, runtimeId, runtimeOwner, runtimeKeys, currentFrameName } from "./runtime-identity.js"
 import {
+  markOwnedNode,
+  removeOwnedArtifacts,
+  removeStaleArtifacts,
+  registerRuntime,
+  clearRuntimeRegistration,
+  watchFrameDetachment,
+  startArtifactMonitor,
+  isElement,
+  isOwnedNode,
+  attachHostActionWatchers,
+  setOwnershipDeps,
+  isRuntimeCleaned,
+  markRuntimeCleaned,
+  teardownOwnershipRuntime,
+} from "./runtime-ownership.js"
+import {
   updatePanelPosition,
   resetPositionMemory,
   resolveAnchorBottom,
@@ -1097,151 +1113,10 @@ let edgePanelViewportResizeHandler = null,
   edgePanelKeyboardPointerHandler = null,
   edgePanelKeyboardClickHandler = null,
   edgePanelKeyboardToggleGuardUntil = 0,
-  edgePanelFrameObserver = null,
-  edgePanelRuntimeCleaned = !1,
-  edgePanelHostActionObserver = null,
-  edgePanelHostClickHandler = null,
-  edgePanelArtifactMonitor = null,
   edgePanelStyleHost = null
-function edgePanelResolveCurrentFrame() {
-  try {
-    const e = window.frameElement
-    if (e && e.ownerDocument === parentDoc) return e
-  } catch (e) {}
-  if (!currentFrameName || "function" != typeof parentDoc.getElementById) return null
-  const e = parentDoc.getElementById(currentFrameName)
-  return e && "iframe" === String(e.tagName || "").toLowerCase() ? e : null
-}
-function edgePanelMarkOwned(e) {
-  return (e && e.setAttribute("data-edge-panel-owner", runtimeOwner), e)
-}
-function edgePanelRemoveOwnedArtifacts() {
-  try {
-    parentDoc.querySelectorAll(`[data-edge-panel-owner="${runtimeOwner}"]`).forEach((e) => {
-      e.remove()
-    })
-  } catch (e) {}
-}
-function edgePanelRemoveStaleArtifacts() {
-  if (!runtimeId) return
-  try {
-    parentDoc
-      .querySelectorAll(`body > div[script_id="${runtimeId}"], head > div[script_id="${runtimeId}"]`)
-      .forEach((e) => {
-        e.remove()
-      })
-  } catch (e) {}
-}
-function edgePanelRegisterRuntime(e) {
-  try {
-    runtimeKeys.forEach((t) => {
-      parentWin[t] = { id: runtimeId, owner: runtimeOwner, cleanup: e }
-    })
-  } catch (e) {
-    console.warn("[集成控件] 注册运行时失败:", e)
-  }
-}
-function edgePanelClearRuntimeRegistration() {
-  try {
-    runtimeKeys.forEach((e) => {
-      const t = parentWin[e]
-      t && t.owner === runtimeOwner && delete parentWin[e]
-    })
-  } catch (e) {}
-}
-function edgePanelAttachFrameDetachWatcher(e) {
-  if (
-    edgePanelFrameObserver ||
-    edgePanelRuntimeCleaned ||
-    parentWin === window ||
-    "undefined" == typeof MutationObserver
-  )
-    return
-  const t = parentDoc.body || parentDoc.documentElement
-  if (!t) return
-  ;((edgePanelFrameObserver = new MutationObserver(() => {
-    if (edgePanelRuntimeCleaned) return
-    const t = edgePanelResolveCurrentFrame()
-    ;(t && t.isConnected) || e()
-  })),
-    edgePanelFrameObserver.observe(t, { childList: !0, subtree: !0 }))
-}
-function edgePanelEnsureArtifacts(e) {
-  if (edgePanelRuntimeCleaned) return
-  let t = !1
-  ;(it && !it.isConnected && parentDoc.body && (parentDoc.body.appendChild(it), (t = !0)),
-    edgePanelStyleHost &&
-      !edgePanelStyleHost.isConnected &&
-      parentDoc.head &&
-      (parentDoc.head.appendChild(edgePanelStyleHost), (t = !0)),
-    e && e(t))
-}
-function edgePanelStartArtifactMonitor(e) {
-  ;(edgePanelArtifactMonitor &&
-    (parentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
-    (edgePanelArtifactMonitor = parentWin.setInterval(() => {
-      edgePanelEnsureArtifacts(e)
-    }, 1200)))
-}
-function edgePanelIsElement(e) {
-  return !!(e && 1 === e.nodeType)
-}
-function edgePanelIsOwnedNode(e) {
-  return !!(
-    edgePanelIsElement(e) &&
-    "function" == typeof e.closest &&
-    e.closest(`[data-edge-panel-owner="${runtimeOwner}"]`)
-  )
-}
-function edgePanelNodeMentionsScriptByText(e) {
-  if (!e || !runtimeId) return !1
-  try {
-    const t = (e.textContent || "").toLowerCase(),
-      n = runtimeId.toLowerCase()
-    if (t.includes(n)) return !0
-    const a = e.getAttribute?.("script_id") || ""
-    if (a === runtimeId) return !0
-  } catch (e) {}
-  return !1
-}
-function edgePanelScheduleAggressivePresenceCheck() {
-  ;[120, 360, 900, 1800, 3200].forEach((e) => {
-    parentWin.setTimeout(() => {
-      if (edgePanelRuntimeCleaned) return
-      const t = edgePanelResolveCurrentFrame()
-      ;(t && t.isConnected) || edgePanelRuntimeCleanup()
-    }, e)
-  })
-}
-function edgePanelAttachHostActionWatchers() {
-  if (edgePanelHostActionObserver || !parentDoc.body) return
-  ;((edgePanelHostClickHandler = (e) => {
-    const t = e.target
-    if (!edgePanelIsElement(t) || edgePanelIsOwnedNode(t)) return
-    const n = t.closest("button,input,label,.menu_button,.fa-trash,.fa-trash-can,.fa-xmark,.fa-ban")
-    if (!n) return
-    let a = n
-    for (let e = 0; a && e < 5; e += 1, a = a.parentElement)
-      if (edgePanelNodeMentionsScriptByText(a)) return void edgePanelScheduleAggressivePresenceCheck()
-  }),
-    parentDoc.addEventListener("click", edgePanelHostClickHandler, !0),
-    (edgePanelHostActionObserver = new MutationObserver((e) => {
-      for (const t of e)
-        if ("childList" === t.type)
-          for (const e of t.removedNodes)
-            if (edgePanelIsElement(e)) {
-              if (edgePanelNodeMentionsScriptByText(e)) return void edgePanelRuntimeCleanup()
-              if ("function" == typeof e.querySelector) {
-                const t = [...e.querySelectorAll("*")].some((e) => edgePanelNodeMentionsScriptByText(e))
-                if (t) return void edgePanelRuntimeCleanup()
-              }
-            }
-    })),
-    edgePanelHostActionObserver.observe(parentDoc.body, { childList: !0, subtree: !0 }))
-}
 function edgePanelIsEdgeTabEvent(e) {
   const t = e?.target
-  return !!(edgePanelIsElement(t) && edgePanelIsOwnedNode(t) && t.closest?.(".edge-tab,.panel-header"))
+  return !!(isElement(t) && isOwnedNode(t) && t.closest?.(".edge-tab,.panel-header"))
 }
 function edgePanelPreserveKeyboardToggle(e) {
   if (!settingsApi.isMobile.value || !edgePanelIsTextInputFocused() || !edgePanelIsEdgeTabEvent(e)) return
@@ -1566,9 +1441,16 @@ function vt() {
   setTimeout(() => a(1), 500)
 }
 function ht() {
+  setOwnershipDeps({
+    styleHost: edgePanelStyleHost,
+    mountHost: it,
+    requestCleanup: () => edgePanelRuntimeCleanup(),
+  })
+
+
   ;(Ne.initPersistence(),
     settingsApi.initSettings(),
-    edgePanelRemoveStaleArtifacts(),
+    removeStaleArtifacts(),
     !parentDoc.getElementById("edge-panel-viewport-fix") && (function () {
       var s = parentDoc.createElement("style");
       s.id = "edge-panel-viewport-fix";
@@ -1595,14 +1477,14 @@ function ht() {
         "}";
       (parentDoc.head || parentDoc.documentElement).appendChild(s);
     })(),
-    (it = edgePanelMarkOwned(parentDoc.createElement("div"))),
+    (it = markOwnedNode(parentDoc.createElement("div"))),
     it.setAttribute("script_id", runtimeId),
     parentDoc.body.appendChild(it),
     (rt = (0, o.createApp)(Je)),
     rt.mount(it),
     (function () {
       if (parentDoc.head.querySelector(`div[script_id="${runtimeId}"]`)) return
-      ;((edgePanelStyleHost = edgePanelMarkOwned(parentDoc.createElement("div"))),
+      ;((edgePanelStyleHost = markOwnedNode(parentDoc.createElement("div"))),
         edgePanelStyleHost.setAttribute("script_id", runtimeId),
         document.querySelectorAll("head > style").forEach((t) => {
           edgePanelStyleHost.appendChild(t.cloneNode(!0))
@@ -1761,20 +1643,14 @@ function ht() {
       e && !t ? beginCapturePick(pt, gt, () => Ne.exitCaptureMode()) : !e && t && endCapturePick()
     }))
   const n = () => {
-      if (edgePanelRuntimeCleaned) return
-      ;((edgePanelRuntimeCleaned = !0),
+      if (isRuntimeCleaned()) return
+      ;(markRuntimeCleaned(),
         bt(),
         endCapturePick(),
         Qe && (Qe.disconnect(), (Qe = null)),
         He && (He.disconnect(), (He = null)),
         Ze && (Ze.disconnect(), (Ze = null)),
-        edgePanelFrameObserver && (edgePanelFrameObserver.disconnect(), (edgePanelFrameObserver = null)),
-        edgePanelArtifactMonitor &&
-          (parentWin.clearInterval(edgePanelArtifactMonitor), (edgePanelArtifactMonitor = null)),
-        edgePanelHostActionObserver && (edgePanelHostActionObserver.disconnect(), (edgePanelHostActionObserver = null)),
-        edgePanelHostClickHandler &&
-          (parentDoc.removeEventListener("click", edgePanelHostClickHandler, !0),
-          (edgePanelHostClickHandler = null)),
+        teardownOwnershipRuntime(),
         $(window).off(".edgePanelLifecycle"),
         $(window.parent).off(".edgePanelLifecycle"),
         $(window.parent).off("resize.edgePanel"))
@@ -1802,8 +1678,8 @@ function ht() {
         At.clear(),
         ct.clear(),
         rt && (rt.unmount(), (rt = null)),
-        edgePanelRemoveOwnedArtifacts(),
-        edgePanelClearRuntimeRegistration())
+        removeOwnedArtifacts(),
+        clearRuntimeRegistration())
     },
     edgePanelCleanupSettings = () => {
       settingsApi.cleanup()
@@ -1811,10 +1687,10 @@ function ht() {
     edgePanelRuntimeCleanup = () => {
       ;(n(), edgePanelCleanupSettings())
     }
-  ;(edgePanelRegisterRuntime(edgePanelRuntimeCleanup),
-    edgePanelAttachFrameDetachWatcher(edgePanelRuntimeCleanup),
-    edgePanelAttachHostActionWatchers(),
-    edgePanelStartArtifactMonitor(() => {
+  ;(registerRuntime(edgePanelRuntimeCleanup),
+    watchFrameDetachment(edgePanelRuntimeCleanup),
+    attachHostActionWatchers(),
+    startArtifactMonitor(() => {
       updatePanelPosition(Ne.setPanelLeftPosition, !0)
     }),
     edgePanelSchedulePositionRefresh(Ne.setPanelLeftPosition),
