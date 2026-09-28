@@ -1,0 +1,26 @@
+{
+  "base": "c280fac",
+  "file": "src/panel/takeover.js",
+  "rename": {
+    "h": "PROTECTED_STYLE_PROPS", "m": "pendingDraggableRestore", "x": "ballClickHandlers",
+    "y": "dragStartHandlers", "w": "mouseMoveGuards", "B": "touchMoveGuards",
+    "E": "styleProtections", "Pv": "popupRegistries", "P": "disableDraggable",
+    "F": "protectStyle", "N": "forceSetStyle", "I": "applyForcedStyles",
+    "Xv": "watchPopups", "Yv": "unwatchPopups", "M": "bindInteractionGuards",
+    "q": "unbindInteractionGuards", "O": "moveBallToContainer", "V": "restoreBall",
+    "G": "insertBallBefore", "L": "hideBall"
+  },
+  "expect": {
+    "disableDraggable": "disableDraggable",
+    "protectStyle": "protectStyle",
+    "forceSetStyle": "forceSetStyle",
+    "applyForcedStyles": "applyForcedStyles",
+    "watchPopups": "watchPopups",
+    "unwatchPopups": "unwatchPopups",
+    "unbindInteractionGuards": "unbindInteractionGuards",
+    "moveBallToContainer": "moveBallToContainer",
+    "restoreBall": "restoreBall",
+    "insertBallBefore": "insertBallBefore",
+    "hideBall": "hideBall"
+  }
+}

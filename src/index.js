@@ -5,11 +5,17 @@ import { withAlpha, darken } from "./core/color.js"
 import {
   isFloatingBoxElement,
   collectIframeDocs,
-  composeTransform,
 } from "./core/dom.js"
 import { getElementIcon, getElementName } from "./core/element-info.js"
 import { getOwnScriptId } from "./core/platform.js"
 import { beginCapturePick, endCapturePick } from "./capture/manual.js"
+import {
+  setCapturedBallClickHandler,
+  moveBallToContainer,
+  restoreBall,
+  insertBallBefore,
+  hideBall,
+} from "./panel/takeover.js"
 import {
   isReleasedFingerprint,
   addReleased,
@@ -20,8 +26,6 @@ import {
 } from "./persist/released.js"
 import {
   setBallContainer,
-  appendBall,
-  compactAfterRemove,
   reorient,
   goPage,
   getPageState,
@@ -38,381 +42,6 @@ function withScopeId(component, attrs) {
 }
 
 const o = Vue
-const h = new Set([
-    "position",
-    "top",
-    "left",
-    "right",
-    "bottom",
-    "zIndex",
-    "z-index",
-    "transform",
-    "margin",
-    "marginTop",
-    "marginLeft",
-    "marginRight",
-    "marginBottom",
-    "margin-top",
-    "margin-left",
-    "margin-right",
-    "margin-bottom",
-  ]),
-  m = new Map(),
-  x = new WeakMap(),
-  y = new WeakMap(),
-  w = new WeakMap(),
-  B = new WeakMap(),
-  E = new WeakMap(),
-  Pv = new Map()
-function P(e, t) {
-  try {
-    const n = window.parent.$
-    if (!n) return void console.warn("[集成控件] 父窗口没有 jQuery")
-    const a = n(e)
-    if (a.hasClass("ui-draggable")) {
-      t && m.set(t, !0)
-      try {
-        a.draggable("disable")
-      } catch {}
-    }
-    a.find(".ui-draggable").each(function () {
-      try {
-        n(this).draggable("disable")
-      } catch {}
-    })
-  } catch {}
-}
-function F(e) {
-  const t = E.get(e)
-  if (t?.isProtected) return
-  const n = new Map(),
-    a = e.style
-  h.forEach((e) => {
-    const t = a.getPropertyValue(e) || a[e]
-    t && n.set(e, t)
-  })
-  const o = a.setProperty.bind(a),
-    r = a.removeProperty.bind(a)
-  let i = !1
-  ;((a.setProperty = function (e, t, n) {
-    const a = e.replace(/([A-Z])/g, "-$1").toLowerCase()
-    if ((!h.has(e) && !h.has(a)) || i) return o(e, t, n || "")
-  }),
-    (a.removeProperty = function (e) {
-      const t = e.replace(/([A-Z])/g, "-$1").toLowerCase()
-      return (!h.has(e) && !h.has(t)) || i ? r(e) : ""
-    }),
-    h.forEach((e) => {
-      const t = a[e]
-      try {
-        Object.defineProperty(a, e, {
-          get: () => n.get(e) || t || "",
-          set(t) {
-            i && (n.set(e, t), o(e, t, "important"))
-          },
-          configurable: !0,
-          enumerable: !0,
-        })
-      } catch {}
-    }))
-  const l = {
-    originalStyleDescriptor: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "style"),
-    isProtected: !0,
-    protectedProperties: h,
-    cachedValues: n,
-    allowModification: () => {
-      i = !0
-    },
-    disallowModification: () => {
-      i = !1
-    },
-  }
-  ;((l.originalSetProperty = o), E.set(e, l))
-}
-function N(e, t, n, a) {
-  const o = E.get(e)
-  if (o?.isProtected) {
-    const r = o
-    ;(r.allowModification && r.allowModification(),
-      r.originalSetProperty ? r.originalSetProperty(t, n, a || "") : e.style.setProperty(t, n, a || ""),
-      o.cachedValues.set(t, n),
-      r.disallowModification && r.disallowModification())
-  } else e.style.setProperty(t, n, a || "")
-}
-function I(e, t) {
-  for (const [n, a] of Object.entries(t)) Array.isArray(a) ? N(e, n, a[0], a[1]) : N(e, n, a)
-}
-function Xv(e) {
-  if (Pv.has(e)) return
-  const t = []
-  Pv.set(e, t)
-  const restoreEntry = (entry) => {
-    const idx = t.indexOf(entry)
-    if (idx > -1) t.splice(idx, 1)
-    entry._popupObserver && (entry._popupObserver.disconnect(), (entry._popupObserver = null))
-    const r = entry.popup
-    entry._stop &&
-      (r.removeEventListener("click", entry._stop), r.removeEventListener("touchend", entry._stop))
-    r.style.cssText = entry.style
-    entry.parent &&
-      entry.parent.isConnected &&
-      (entry.nextSibling && entry.nextSibling.isConnected && entry.nextSibling.parentElement === entry.parent
-        ? entry.parent.insertBefore(r, entry.nextSibling)
-        : entry.parent.appendChild(r))
-  }
-  const n = new MutationObserver((a) => {
-    for (const o of a) {
-      if (o.type === "attributes" && (o.attributeName === "style" || o.attributeName === "class")) {
-        const r = o.target
-        if (r === e) continue
-        const i = window.parent.getComputedStyle(r)
-        const l = i.display !== "none" && i.visibility !== "hidden"
-        const s = i.position === "absolute" || i.position === "fixed"
-        if (l && s && !t.some((p) => p.popup === r)) {
-          const c = r.parentElement,
-            p = r.nextSibling,
-            d = r.style.cssText,
-            u = (ev) => { ev.stopPropagation() }
-          r.addEventListener("click", u)
-          r.addEventListener("touchend", u)
-          const entry = { popup: r, parent: c, nextSibling: p, style: d, _stop: u, _popupObserver: null }
-          t.push(entry)
-          window.parent.document.body.appendChild(r)
-          const C = r.getBoundingClientRect(),
-            g = e.getBoundingClientRect()
-          let f = g.top - C.height - 6,
-            b = g.left
-          const v = window.parent.innerWidth,
-            h = window.parent.innerHeight
-          if (b + C.width > v - 8) b = v - C.width - 8
-          if (b < 8) b = 8
-          if (f < 8) f = Math.min(g.bottom + 6, h - C.height - 8)
-          ;(r.style.position = "fixed"),
-            (r.style.top = f + "px"),
-            (r.style.left = b + "px"),
-            (r.style.zIndex = "10001"),
-            (r.style.margin = "0")
-          // r 移出 e 的子树后，上面这个观察 e 的 MutationObserver 再也收不到 r 自身的属性变化通知，
-          // 单独给它挂一个自身观察者，保证它自己变 display:none/visibility:hidden 时也能正确归位，
-          // 不然会一直卡在 body 下（隐藏但脱离原位置）直到球被释放。
-          const po = new MutationObserver(() => {
-            const ii = window.parent.getComputedStyle(r)
-            const ll = ii.display !== "none" && ii.visibility !== "hidden"
-            if (!ll) restoreEntry(entry)
-          })
-          po.observe(r, { attributes: !0, attributeFilter: ["style", "class"] })
-          entry._popupObserver = po
-        } else if (!l && s) {
-          const entry = t.find((p) => p.popup === r)
-          entry && restoreEntry(entry)
-        }
-      }
-    }
-  })
-  n.observe(e, { attributes: !0, subtree: !0, attributeFilter: ["style", "class"] }),
-    (t._observer = n)
-}
-function Yv(e) {
-  const t = Pv.get(e)
-  if (!t) return
-  t._observer && (t._observer.disconnect(), (t._observer = null))
-  for (const n of t)
-    n.popup &&
-      n.style !== void 0 &&
-      (n._popupObserver && (n._popupObserver.disconnect(), (n._popupObserver = null)),
-      n._stop &&
-        (n.popup.removeEventListener("click", n._stop),
-        n.popup.removeEventListener("touchend", n._stop)),
-      (n.popup.style.cssText = n.style),
-      n.parent &&
-        n.parent.isConnected &&
-        (n.nextSibling && n.nextSibling.isConnected && n.nextSibling.parentElement === n.parent
-          ? n.parent.insertBefore(n.popup, n.nextSibling)
-          : n.parent.appendChild(n.popup)))
-  Pv.delete(e)
-}
-function M(e, t) {
-  q(e)
-  Xv(e)
-  const n = (e) => {
-      e.stopPropagation()
-    },
-    a = (e) => {
-      e.stopPropagation()
-    },
-    o = (e) => {
-      e.preventDefault()
-    },
-    r =
-      "qrv21-trigger-v21" === e.id
-        ? "inline-native"
-        : "ai-floating-panel-launcher" === e.id ||
-            "auto_illustrator_conso_floating_panel_root" === e.id ||
-            e.classList.contains("ai-floating-panel-root")
-          ? "root-open"
-          : "default"
-  ;(e.addEventListener("mousemove", n, !0),
-    e.addEventListener("touchmove", a, !0),
-    e.addEventListener("dragstart", o, !0),
-    w.set(e, n),
-    B.set(e, a),
-    y.set(e, o))
-  if (t && "root-open" === r) {
-    const n = (a) => {
-      if (a.defaultPrevented || 0 !== a.button) return
-      ;(a.preventDefault(), a.stopPropagation(), a.stopImmediatePropagation(), Ne.clickCapturedBall(t, r))
-    }
-    ;(e.addEventListener("click", n, !0), x.set(e, n))
-  }
-}
-function q(e) {
-  let t = !1
-  Yv(e)
-  const n = w.get(e)
-  n && (e.removeEventListener("mousemove", n, !0), w.delete(e), (t = !0))
-  const a = B.get(e)
-  a && (e.removeEventListener("touchmove", a, !0), B.delete(e), (t = !0))
-  const o = y.get(e)
-  o && (e.removeEventListener("dragstart", o, !0), y.delete(e), (t = !0))
-  const r = x.get(e)
-  r && (e.removeEventListener("click", r, !0), x.delete(e), (t = !0))
-}
-function O(e) {
-  if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
-  const t = e.element
-  let n = t.offsetWidth,
-    a = t.offsetHeight
-  if (0 === n || 0 === a) {
-    const e = t.getBoundingClientRect()
-    ;((n = e.width), (a = e.height))
-  }
-  ;(0 === n && (n = 50), 0 === a && (a = 50))
-  const o = Math.min(34 / n, 34 / a),
-    r = (n * (1 - o)) / 2,
-    tr = composeTransform(window.parent.getComputedStyle(t).transform, o)
-  ;(P(t, e.id),
-    t.setAttribute("data-edge-ball-id", e.id),
-    appendBall(t),
-    F(t),
-    I(t, {
-      position: ["relative", "important"],
-      top: ["auto", "important"],
-      left: ["auto", "important"],
-      right: ["auto", "important"],
-      bottom: ["auto", "important"],
-      "z-index": ["auto", "important"],
-      opacity: ["1", "important"],
-      visibility: ["visible", "important"],
-      "pointer-events": ["auto", "important"],
-      transform: [tr, "important"],
-      "transform-origin": ["center center", "important"],
-      margin: [`-${Math.max(0, r - 2)}px`, "important"],
-      "flex-shrink": ["0", "important"],
-    }),
-    M(t, e.id))
-}
-function V(e) {
-  const t = e.element
-  ;(!(function (e) {
-    const t = E.get(e)
-    if (t && t.isProtected)
-      try {
-        const n = t,
-          a = e.style
-        n.allowModification && n.allowModification()
-        const o = CSSStyleDeclaration.prototype.setProperty,
-          r = CSSStyleDeclaration.prototype.removeProperty
-        ;((a.setProperty = o),
-          (a.removeProperty = r),
-          h.forEach((e) => {
-            try {
-              delete a[e]
-            } catch {}
-          }),
-          (t.isProtected = !1),
-          E.delete(e))
-      } catch {}
-  })(t),
-    q(t),
-    t.removeAttribute("data-edge-ball-id"),
-    compactAfterRemove(t),
-    (t.style.cssText = e.originalStyle),
-    (t.style.position = e.originalPosition?.positionValue || "fixed"),
-    !e.originalStyle &&
-      (e.originalPosition.top && "auto" !== e.originalPosition.top && (t.style.top = e.originalPosition.top),
-      e.originalPosition.left && "auto" !== e.originalPosition.left && (t.style.left = e.originalPosition.left),
-      e.originalPosition.right && "auto" !== e.originalPosition.right && (t.style.right = e.originalPosition.right),
-      e.originalPosition.bottom && "auto" !== e.originalPosition.bottom && (t.style.bottom = e.originalPosition.bottom)),
-    (t.style.opacity = e.originalPosition?.opacityValue || "1"),
-    (t.style.visibility = e.originalPosition?.visibilityValue || "visible"),
-    (t.style.pointerEvents = e.originalPosition?.pointerEventsValue || "auto"))
-  const n = e.originalParent && e.originalParent.isConnected,
-    a = e.originalNextSibling && e.originalNextSibling.isConnected
-  ;(n
-    ? a && e.originalNextSibling.parentNode === e.originalParent
-      ? e.originalParent.insertBefore(t, e.originalNextSibling)
-      : e.originalParent.appendChild(t)
-    : window.parent.document.body.appendChild(t),
-    (function (e, t) {
-      try {
-        const n = window.parent.$
-        if (!n) return void console.warn("[集成控件] 父窗口没有 jQuery")
-        const a = n(e),
-          o = !!t && m.get(t),
-          r = a.hasClass("ui-draggable")
-        if (o || r) {
-          try {
-            a.draggable("enable")
-          } catch {}
-          t && m.delete(t)
-        }
-        a.find(".ui-draggable").each(function () {
-          try {
-            n(this).draggable("enable")
-          } catch {}
-        })
-      } catch {}
-    })(t, e.id))
-}
-function G(e, t) {
-  if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void L(e.element))
-  const n = e.element
-  let a = n.offsetWidth,
-    o = n.offsetHeight
-  if (0 === a || 0 === o) {
-    const e = n.getBoundingClientRect()
-    ;((a = e.width), (o = e.height))
-  }
-  ;(0 === a && (a = 50), 0 === o && (o = 50))
-  const r = Math.min(34 / a, 34 / o),
-    i = (a * (1 - r)) / 2,
-    tr = composeTransform(window.parent.getComputedStyle(n).transform, r)
-  ;(appendBall(n, t),
-    n.setAttribute("data-edge-ball-id", e.id),
-    F(n),
-    I(n, {
-      position: ["relative", "important"],
-      top: ["auto", "important"],
-      left: ["auto", "important"],
-      right: ["auto", "important"],
-      bottom: ["auto", "important"],
-      "z-index": ["auto", "important"],
-      opacity: ["1", "important"],
-      visibility: ["visible", "important"],
-      "pointer-events": ["auto", "important"],
-      transform: [tr, "important"],
-      "transform-origin": ["center center", "important"],
-      margin: [`-${Math.max(0, i - 2)}px`, "important"],
-      "flex-shrink": ["0", "important"],
-    }),
-    P(n, e.id),
-    M(n, e.id))
-}
-function L(e) {
-  ;(e.style.setProperty("opacity", "0", "important"),
-    e.style.setProperty("pointer-events", "none", "important"),
-    e.style.setProperty("transform", "translateX(-9999px)", "important"))
-}
 const X = z,
   T = X.z.object({
     scriptId: X.z.string().nullable(),
@@ -596,7 +225,7 @@ function Pe() {
   ;((ue.value = {}),
     ee(ue.value),
     e.forEach((e) => {
-      ;(e.element.isConnected && V(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
+      ;(e.element.isConnected && restoreBall(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
     }))
 }
 function Fe(e, t) {
@@ -621,7 +250,7 @@ function Fe(e, t) {
       (n.originalDisplay = r.display || "flex"),
       (n.fingerprint = extractFingerprint(t)),
       (n.element = t),
-      G(n, o),
+      insertBallBefore(n, o),
       e && e.isConnected && e !== t && e.remove())
   }
 }
@@ -665,9 +294,9 @@ const Ne = {
               a = o.element
               break
             }
-          G(e, a)
-        } else O(e)
-      } else O(e)
+          insertBallBefore(e, a)
+        } else moveBallToContainer(e)
+      } else moveBallToContainer(e)
       ;(ae(e.fingerprint), H || ee(ue.value))
     }
   },
@@ -677,7 +306,7 @@ const Ne = {
       const n = t.element,
         a = t.fingerprint,
         { [e]: _, ...o } = ue.value
-      ;((ue.value = o), ae(a), ee(ue.value), n && V(t), he.forEach((t) => t(e, a, n)))
+      ;((ue.value = o), ae(a), ee(ue.value), n && restoreBall(t), he.forEach((t) => t(e, a, n)))
     }
   },
   clickCapturedBall: function (e, t = "default") {
@@ -837,7 +466,7 @@ const Ne = {
     const e = Object.values(ue.value)
     ;((ue.value = {}),
       e.forEach((e) => {
-        ;(e.element.isConnected && V(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
+        ;(e.element.isConnected && restoreBall(e), he.forEach((t) => t(e.id, e.fingerprint, e.element)))
       }))
   },
   updateCapturedBallElement: Fe,
@@ -924,9 +553,9 @@ const Ne = {
   goPage,
   fbGetPageState: getPageState,
   getBallContainer: getContainer,
-  moveBallToContainer: O,
-  moveBallBackToOriginal: V,
-  hideFloatingBall: L,
+  moveBallToContainer: moveBallToContainer,
+  moveBallBackToOriginal: restoreBall,
+  hideFloatingBall: hideBall,
   showFloatingBall: function (e, t) {
     e.style.cssText = t
   },
@@ -974,6 +603,8 @@ const Ne = {
     return !!e && Se({ scriptId: null, elementId: e, classSelector: null, title: null })
   },
 }
+setCapturedBallClickHandler((id, mode) => Ne.clickCapturedBall(id, mode))
+
 const Ie = _,
   Me = (0, o.ref)({
     barBg: "rgba(30, 30, 40, 0.9)",
