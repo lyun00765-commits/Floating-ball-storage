@@ -1,0 +1,18 @@
+{
+  "base": "e5e8924",
+  "file": "src/persist/released.js",
+  "rename": {
+    "Rb": "releasedFingerprints",
+    "isReleasedFp": "isReleasedFingerprint",
+    "saveReleasedFps": "saveReleased",
+    "addReleasedFp": "addReleased",
+    "removeReleasedFp": "removeReleased",
+    "R": "getOwnScriptId"
+  },
+  "expect": {
+    "isReleasedFingerprint": "isReleasedFp",
+    "saveReleased": "saveReleasedFps",
+    "addReleased": "addReleasedFp",
+    "removeReleased": "removeReleasedFp"
+  }
+}

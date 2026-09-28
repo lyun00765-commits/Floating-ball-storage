@@ -1,0 +1,6 @@
+{
+  "base": "e5e8924",
+  "file": "src/core/platform.js",
+  "rename": { "R": "getOwnScriptId" },
+  "expect": { "getOwnScriptId": "R" }
+}

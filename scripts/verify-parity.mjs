@@ -39,7 +39,6 @@ if (missing.length) {
 
 const expect = spec.expect || {}
 const names = Object.keys(expect)
-const oldNames = names.map((n) => expect[n] ?? n)
 
 const newSrc = fs.readFileSync(path.join(root, spec.file), 'utf8')
 const oldFns = grabFunctions(renamed, names)
@@ -48,7 +47,6 @@ const newFns = grabFunctions(newSrc, names)
 let bad = 0
 let ok = 0
 for (const name of names) {
-  const oldName = expect[name] ?? name
   const oldText = oldFns[name]
   const newText = newFns[name]
   if (!oldText) { console.error(`✗ 基线中找不到函数 ${name}（重命名后应为该名）`); bad++; continue }

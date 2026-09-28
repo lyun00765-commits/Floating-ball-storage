@@ -9,6 +9,15 @@ import {
   composeTransform,
 } from "./core/dom.js"
 import { getElementIcon, getElementName } from "./core/element-info.js"
+import { getOwnScriptId } from "./core/platform.js"
+import {
+  isReleasedFingerprint,
+  addReleased,
+  removeReleased,
+  clearReleased,
+  getReleasedCount,
+  setReleased,
+} from "./persist/released.js"
 import {
   setBallContainer,
   appendBall,
@@ -29,7 +38,7 @@ function withScopeId(component, attrs) {
 }
 
 const o = Vue
-function s(e, t) {
+function isManualCaptureCandidate(e, t) {
   if ("BODY" === e.tagName || "HTML" === e.tagName) return !1
   const n = e.getBoundingClientRect(),
     a = n.width,
@@ -72,15 +81,15 @@ function s(e, t) {
   if (txt > 4 && !s && !A && !c) return !1
   return !!(l || s || A || c)
 }
-let A = null,
-  c = !1,
-  _fbCapturedIframeDocs = [],
-  p = null,
-  d = null,
-  u = null,
-  g = null,
-  C = null
-function f(e, t, n, a, o) {
+let overlayEl = null,
+  isPicking = !1,
+  boundDocs = [],
+  onClickHandler = null,
+  onTouchStartHandler = null,
+  onTouchEndHandler = null,
+  onKeyDownHandler = null,
+  onContextMenuHandler = null
+function captureAtPoint(e, t, n, a, o) {
   const r = elementsFromPointAcrossFrames(e, t).filter((e) => "capture-mode-overlay" !== e.id)
   if (r.length > 0) {
     const e = (function (hitStack, ownScriptId) {
@@ -103,7 +112,7 @@ function f(e, t, n, a, o) {
           }
           const style = (node.ownerDocument?.defaultView || window.parent).getComputedStyle(node),
             pos = style.position
-          if (s(node, style)) {
+          if (isManualCaptureCandidate(node, style)) {
             const rect = node.getBoundingClientRect(),
               area = rect.width * rect.height,
               cls = String(node.className || "").toLowerCase(),
@@ -148,87 +157,87 @@ function f(e, t, n, a, o) {
       pool.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.area - a.area))
       return pool[0].element
     })(r, n)
-    e && a(e) ? (removeReleasedFp(extractFingerprint(e)), toastr.success(`已捕获: ${getElementName(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
+    e && a(e) ? (removeReleased(extractFingerprint(e)), toastr.success(`已捕获: ${getElementName(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
   }
   o()
 }
-function b(e, t, n) {
-  if (c) return
-  ;((c = !0),
+function beginCapturePick(e, t, n) {
+  if (isPicking) return
+  ;((isPicking = !0),
     (function (e) {
-      if (A) return
+      if (overlayEl) return
       const t = window.parent.document
-      ;((A = t.createElement("div")),
-        (A.id = "capture-mode-overlay"),
-        A.setAttribute("script_id", e),
-        (A.style.cssText =
+      ;((overlayEl = t.createElement("div")),
+        (overlayEl.id = "capture-mode-overlay"),
+        overlayEl.setAttribute("script_id", e),
+        (overlayEl.style.cssText =
           "\n    position: fixed;\n    top: 0;\n    left: 0;\n    right: 0;\n    bottom: 0;\n    background: rgba(0, 0, 0, 0.3);\n    z-index: 2147483646;\n    cursor: crosshair;\n    pointer-events: none;\n  "))
       const n = t.createElement("div")
       ;((n.style.cssText =
         "\n    position: fixed;\n    top: 20px;\n    left: 50%;\n    transform: translateX(-50%);\n    background: rgba(0, 0, 0, 0.8);\n    color: white;\n    padding: 12px 24px;\n    border-radius: 8px;\n    font-size: 14px;\n    z-index: 2147483647;\n    pointer-events: none;\n    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);\n  "),
         (n.textContent = "点击要捕获的悬浮球，按 ESC 或右键取消"),
-        A.appendChild(n),
-        t.body.appendChild(A))
+        overlayEl.appendChild(n),
+        t.body.appendChild(overlayEl))
     })(e))
   const a = window.parent.document
-  ;((p = (a) => {
-    if (!c) return
+  ;((onClickHandler = (a) => {
+    if (!isPicking) return
     ;(a.preventDefault(), a.stopPropagation(), a.stopImmediatePropagation())
-    f(a.clientX, a.clientY, e, t, n)
+    captureAtPoint(a.clientX, a.clientY, e, t, n)
   }),
-    (d = (e) => {
-      c && (e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation())
+    (onTouchStartHandler = (e) => {
+      isPicking && (e.preventDefault(), e.stopPropagation(), e.stopImmediatePropagation())
     }),
-    (u = (a) => {
-      if (!c) return
+    (onTouchEndHandler = (a) => {
+      if (!isPicking) return
       ;(a.preventDefault(), a.stopPropagation(), a.stopImmediatePropagation())
       const o = a.changedTouches[0]
       if (!o) return
-      f(o.clientX, o.clientY, e, t, n)
+      captureAtPoint(o.clientX, o.clientY, e, t, n)
     }),
-    (g = (e) => {
-      c && "Escape" === e.key && (e.preventDefault(), e.stopPropagation(), n())
+    (onKeyDownHandler = (e) => {
+      isPicking && "Escape" === e.key && (e.preventDefault(), e.stopPropagation(), n())
     }),
-    (C = (e) => {
-      c && (e.preventDefault(), e.stopPropagation(), n())
+    (onContextMenuHandler = (e) => {
+      isPicking && (e.preventDefault(), e.stopPropagation(), n())
     }),
-    (_fbCapturedIframeDocs = [a, ...collectIframeDocs()]),
-    _fbCapturedIframeDocs.forEach((e) => {
-      e.addEventListener("click", p, !0)
-      e.addEventListener("touchstart", d, { capture: !0, passive: !1 })
-      e.addEventListener("touchend", u, { capture: !0, passive: !1 })
-      e.addEventListener("keydown", g, !0)
-      e.addEventListener("contextmenu", C, !0)
+    (boundDocs = [a, ...collectIframeDocs()]),
+    boundDocs.forEach((e) => {
+      e.addEventListener("click", onClickHandler, !0)
+      e.addEventListener("touchstart", onTouchStartHandler, { capture: !0, passive: !1 })
+      e.addEventListener("touchend", onTouchEndHandler, { capture: !0, passive: !1 })
+      e.addEventListener("keydown", onKeyDownHandler, !0)
+      e.addEventListener("contextmenu", onContextMenuHandler, !0)
     }))
 }
-function v() {
-  if (!c) return
-  c = !1
+function endCapturePick() {
+  if (!isPicking) return
+  isPicking = !1
   const e = window.parent.document,
-    _p = p,
-    _d = d,
-    _u = u,
-    _g = g,
-    _C = C
+    _p = onClickHandler,
+    _d = onTouchStartHandler,
+    _u = onTouchEndHandler,
+    _g = onKeyDownHandler,
+    _C = onContextMenuHandler
   ;(e.removeEventListener("click", _p, !0),
     e.removeEventListener("touchstart", _d, !0),
     e.removeEventListener("touchend", _u, !0),
     e.removeEventListener("keydown", _g, !0),
     e.removeEventListener("contextmenu", _C, !0),
-    (p = null),
-    (d = null),
-    (u = null),
-    (g = null),
-    (C = null),
-    _fbCapturedIframeDocs.forEach((e) => {
+    (onClickHandler = null),
+    (onTouchStartHandler = null),
+    (onTouchEndHandler = null),
+    (onKeyDownHandler = null),
+    (onContextMenuHandler = null),
+    boundDocs.forEach((e) => {
       e.removeEventListener("click", _p, !0)
       e.removeEventListener("touchstart", _d, !0)
       e.removeEventListener("touchend", _u, !0)
       e.removeEventListener("keydown", _g, !0)
       e.removeEventListener("contextmenu", _C, !0)
     }),
-    (_fbCapturedIframeDocs = []),
-    A && (A.remove(), (A = null)))
+    (boundDocs = []),
+    overlayEl && (overlayEl.remove(), (overlayEl = null)))
 }
 const h = new Set([
     "position",
@@ -631,48 +640,7 @@ const X = z,
       releasedFingerprints: X.z.array(T).default([]),
     })
     .prefault({})
-function R() {
-  try {
-    return getScriptId()
-  } catch {
-    return "集成控件"
-  }
-}
 const J = (0, o.ref)([])
-const Rb = (0, o.ref)([])
-function isReleasedFp(e) {
-  for (const t of Rb.value) if (fingerprintsMatch(e, t)) return !0
-  return !1
-}
-function saveReleasedFps() {
-  try {
-    const e = {
-      ...(getVariables({ type: "script", script_id: R() }) ?? {}),
-      releasedFingerprints: JSON.parse(JSON.stringify(Rb.value)),
-    }
-    replaceVariables(e, { type: "script", script_id: R() })
-  } catch {}
-}
-function addReleasedFp(e) {
-  if (!e || !isValidFingerprint(e)) return
-  if (isReleasedFp(e)) return
-  Rb.value = [
-    ...Rb.value,
-    {
-      scriptId: e.scriptId ?? null,
-      elementId: e.elementId ?? null,
-      classSelector: e.classSelector ?? null,
-      title: e.title ?? null,
-    },
-  ]
-  saveReleasedFps()
-}
-function removeReleasedFp(e) {
-  if (!e) return
-  const n = Rb.value.length
-  Rb.value = Rb.value.filter((t) => !fingerprintsMatch(e, t))
-  if (Rb.value.length !== n) saveReleasedFps()
-}
 let Q = !1,
   H = !1,
   K = 0
@@ -710,9 +678,9 @@ function ee(e) {
         })
       }
     t.sort((e, t) => (e.order ?? 0) - (t.order ?? 0))
-    const o = { ...(getVariables({ type: "script", script_id: R() }) ?? {}), savedBalls: t },
+    const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: t },
       r = JSON.parse(JSON.stringify(o))
-    ;(replaceVariables(r, { type: "script", script_id: R() }), (J.value = r.savedBalls))
+    ;(replaceVariables(r, { type: "script", script_id: getOwnScriptId() }), (J.value = r.savedBalls))
   } catch {}
 }
 function te(e) {
@@ -798,10 +766,10 @@ const pe = {
       } else if (lt) bt()
     },
     clearReleasedFps: function () {
-      ;(Rb.value = [], saveReleasedFps())
+      ;clearReleased()
     },
     getReleasedFpCount: function () {
-      return Rb.value.length
+      return getReleasedCount()
     },
     cleanup: function () {},
   },
@@ -1167,11 +1135,11 @@ const Ne = {
     if (!Q) {
       Q = !0
       try {
-        const t = R(),
+        const t = getOwnScriptId(),
           n = getVariables({ type: "script", script_id: t }),
           a = D.parse(n)
         ;(a.savedBalls.length > 0 && (J.value = e(a.savedBalls)),
-          a.releasedFingerprints && a.releasedFingerprints.length > 0 && (Rb.value = a.releasedFingerprints))
+          a.releasedFingerprints && a.releasedFingerprints.length > 0 && setReleased(a.releasedFingerprints))
       } catch {}
     }
   },
@@ -1450,7 +1418,7 @@ const Ge = { class: "panel-icons" },
           if (n.element === e)
             return (
               e.setAttribute("data-edge-panel-ignore", "1"),
-              addReleasedFp(n.fingerprint || extractFingerprint(e)),
+              addReleased(n.fingerprint || extractFingerprint(e)),
               b(n.id),
               e.removeAttribute("data-edge-panel-ignore"),
               (filterPendingBall(n.fingerprint, e)),
@@ -1461,7 +1429,7 @@ const Ge = { class: "panel-icons" },
         return (
           !!n &&
           (e.setAttribute("data-edge-panel-ignore", "1"),
-          addReleasedFp(extractFingerprint(e)),
+          addReleased(extractFingerprint(e)),
           b(`ball_${n}`),
           e.removeAttribute("data-edge-panel-ignore"),
           (filterPendingBall(null, e)),
@@ -1473,8 +1441,8 @@ const Ge = { class: "panel-icons" },
   const a = fp || extractFingerprint(e)
   J.value = J.value.filter((t) => !fingerprintsMatch(t.fingerprint, a))
   try {
-    const o = { ...(getVariables({ type: "script", script_id: R() }) ?? {}), savedBalls: JSON.parse(JSON.stringify(J.value)) }
-    replaceVariables(o, { type: "script", script_id: R() })
+    const o = { ...(getVariables({ type: "script", script_id: getOwnScriptId() }) ?? {}), savedBalls: JSON.parse(JSON.stringify(J.value)) }
+    replaceVariables(o, { type: "script", script_id: getOwnScriptId() })
   } catch {}
 }
       function S(e) {
@@ -1520,7 +1488,7 @@ const Ge = { class: "panel-icons" },
               if (0 === t.length) return void toastr.info("当前没有已收纳的悬浮球")
               for (const e of t) {
                 try {
-                  addReleasedFp(e.fingerprint)
+                  addReleased(e.fingerprint)
                   Ne.removeCapturedBall(e.id)
                   filterPendingBall(e.fingerprint, e.element)
                   e.element && e.element.removeAttribute("data-edge-panel-ignore")
@@ -2350,7 +2318,7 @@ function gt(e, t) {
       originalStyle: A,
       order: t?.order,
     }
-  return (ct.set(e, r), Ne.addCapturedBall(c), removeReleasedFp(n), !0)
+  return (ct.set(e, r), Ne.addCapturedBall(c), removeReleased(n), !0)
 }
 // ==== 悬浮球识别参数（可按需微调，数值越严格越保守）====
 const BALL_SIZE_MIN = 20,        // 悬浮球最小边长(px)
@@ -2382,7 +2350,7 @@ function isFloatingBallCandidate(e, ownScriptId) {
   if (e.hasAttribute("data-edge-panel-ignore")) return !1
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1
   if ((e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")) === ownScriptId) return !1
-  if ("auto" === pe.getCaptureMode() && isReleasedFp(extractFingerprint(e))) return !1
+  if ("auto" === pe.getCaptureMode() && isReleasedFingerprint(extractFingerprint(e))) return !1
   if (getContainer() && getContainer().contains(e)) return !1
   if (e.closest(".edge-panel-root,[data-edge-panel-owner]")) return !1
 
@@ -2579,9 +2547,9 @@ function vt() {
     },
     a = (o) => {
       const docs = [window.parent.document, ...collectIframeDocs()],
-        i = J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFp(n.fingerprint))
+        i = J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint))
       for (const e of i) for (const r of docs) if (n(e, r)) break
-      if (J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFp(n.fingerprint)).length > 0)
+      if (J.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint)).length > 0)
         if (o < 120) {
           const d = o <= 8 ? 400 : 1500
           setTimeout(() => a(o + 1), d)
@@ -2783,13 +2751,13 @@ function ht() {
       n && (At.delete(n), ct.delete(n))
     }),
     (0, o.watch)(Ne.isCaptureModeActive, (e, t) => {
-      e && !t ? b(pt, gt, () => Ne.exitCaptureMode()) : !e && t && v()
+      e && !t ? beginCapturePick(pt, gt, () => Ne.exitCaptureMode()) : !e && t && endCapturePick()
     }))
   const n = () => {
       if (edgePanelRuntimeCleaned) return
       ;((edgePanelRuntimeCleaned = !0),
         bt(),
-        v(),
+        endCapturePick(),
         Qe && (Qe.disconnect(), (Qe = null)),
         He && (He.disconnect(), (He = null)),
         Ze && (Ze.disconnect(), (Ze = null)),
