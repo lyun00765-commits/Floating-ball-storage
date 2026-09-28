@@ -249,16 +249,15 @@ function bindInteractionGuards(e, t) {
   }
 }
 function unbindInteractionGuards(e) {
-  let t = !1
   unwatchPopups(e)
   const n = mouseMoveGuards.get(e)
-  n && (e.removeEventListener("mousemove", n, !0), mouseMoveGuards.delete(e), (t = !0))
+  n && (e.removeEventListener("mousemove", n, !0), mouseMoveGuards.delete(e))
   const a = touchMoveGuards.get(e)
-  a && (e.removeEventListener("touchmove", a, !0), touchMoveGuards.delete(e), (t = !0))
+  a && (e.removeEventListener("touchmove", a, !0), touchMoveGuards.delete(e))
   const o = dragStartHandlers.get(e)
-  o && (e.removeEventListener("dragstart", o, !0), dragStartHandlers.delete(e), (t = !0))
+  o && (e.removeEventListener("dragstart", o, !0), dragStartHandlers.delete(e))
   const r = ballClickHandlers.get(e)
-  r && (e.removeEventListener("click", r, !0), ballClickHandlers.delete(e), (t = !0))
+  r && (e.removeEventListener("click", r, !0), ballClickHandlers.delete(e))
 }
 export function moveBallToContainer(e) {
   if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void hideBall(e.element))

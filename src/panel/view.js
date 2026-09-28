@@ -76,26 +76,16 @@ const Ge = { class: "panel-icons" },
           capturedBallsList: i,
           hasPlugins: l,
           isCaptureModeActive: s,
-          panelLeftPosition: A,
           panelPositionStyle: c,
           effectivePosition: p,
           isHorizontalLayout: d,
-          isVerticalLayout: u,
-          settings: g,
           togglePanel: C,
           closePanel: f,
           removeCapturedBall: b,
           enterCaptureMode: v,
           setBallContainer: h,
-          setPanelPosition: m,
         } = deps.store,
         { themeColors: x } = themeApi,
-        y = [
-          { value: "left", label: "左侧", icon: "fa-solid fa-arrow-left" },
-          { value: "right", label: "右侧", icon: "fa-solid fa-arrow-right" },
-          { value: "top", label: "顶部", icon: "fa-solid fa-arrow-up" },
-          { value: "bottom", label: "底部", icon: "fa-solid fa-arrow-down" },
-        ],
         w = (0, Vue.computed)(() => {
           switch (p.value) {
             case "left":
@@ -192,10 +182,6 @@ const Ge = { class: "panel-icons" },
     replaceVariables(o, { type: "script", script_id: getOwnScriptId() })
   } catch {}
 }
-      function S(e) {
-        const t = findBallElementFromTarget(e.target)
-        t && releaseBallElement(t)
-      }
       function k() {
         ;((releaseMode.value = !1), v())
       }

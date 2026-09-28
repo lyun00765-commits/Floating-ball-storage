@@ -28,7 +28,9 @@ export default [
       // 拆分模块时的主要防线：漏掉的 import 会在这里暴露，
       // 否则标识符会静默退化为全局引用，只在运行时炸。
       'no-undef': 'error',
-      'no-unused-vars': ['warn', { args: 'none' }],
+      // ignoreRestSiblings：`const { [key]: _, ...rest }` 是剔除某个键的标准写法，
+      // 被丢弃的那个绑定本就不该使用。
+      'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none', ignoreRestSiblings: true }],
     },
   },
   {

@@ -2,13 +2,26 @@
   "base": "c280fac",
   "file": "src/panel/takeover.js",
   "rename": {
-    "h": "PROTECTED_STYLE_PROPS", "m": "pendingDraggableRestore", "x": "ballClickHandlers",
-    "y": "dragStartHandlers", "w": "mouseMoveGuards", "B": "touchMoveGuards",
-    "E": "styleProtections", "Pv": "popupRegistries", "P": "disableDraggable",
-    "F": "protectStyle", "N": "forceSetStyle", "I": "applyForcedStyles",
-    "Xv": "watchPopups", "Yv": "unwatchPopups", "M": "bindInteractionGuards",
-    "q": "unbindInteractionGuards", "O": "moveBallToContainer", "V": "restoreBall",
-    "G": "insertBallBefore", "L": "hideBall"
+    "h": "PROTECTED_STYLE_PROPS",
+    "m": "pendingDraggableRestore",
+    "x": "ballClickHandlers",
+    "y": "dragStartHandlers",
+    "w": "mouseMoveGuards",
+    "B": "touchMoveGuards",
+    "E": "styleProtections",
+    "Pv": "popupRegistries",
+    "P": "disableDraggable",
+    "F": "protectStyle",
+    "N": "forceSetStyle",
+    "I": "applyForcedStyles",
+    "Xv": "watchPopups",
+    "Yv": "unwatchPopups",
+    "M": "bindInteractionGuards",
+    "q": "unbindInteractionGuards",
+    "O": "moveBallToContainer",
+    "V": "restoreBall",
+    "G": "insertBallBefore",
+    "L": "hideBall"
   },
   "expect": {
     "disableDraggable": "disableDraggable",
@@ -22,5 +35,20 @@
     "restoreBall": "restoreBall",
     "insertBallBefore": "insertBallBefore",
     "hideBall": "hideBall"
-  }
+  },
+  "rewrites": {
+    "unbindInteractionGuards": [
+      {
+        "desc": "删除死变量 t：它累积「是否有解绑发生」却从未被读取（原函数没写 return），属编译产物遗留",
+        "find": "  let t = !1\n",
+        "replace": ""
+      },
+      {
+        "desc": "同上，摘掉逗号链尾部的 (t = !0)",
+        "find": ", (t = !0))",
+        "replace": ")"
+      }
+    ]
+  },
+  "notes": "已登记 rewrites：unbindInteractionGuards 删除未使用的累加变量 t。"
 }
