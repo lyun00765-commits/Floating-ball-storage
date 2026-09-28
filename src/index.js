@@ -2,6 +2,13 @@ import { klona as e } from "https://testingcf.jsdelivr.net/npm/klona/+esm"
 import { injectStyles } from "./styles/inject.js"
 import { extractFingerprint, fingerprintsMatch, isValidFingerprint, getClassSelector } from "./core/fingerprint.js"
 import { withAlpha, darken } from "./core/color.js"
+import {
+  isFloatingBoxElement,
+  collectIframeDocs,
+  elementsFromPointAcrossFrames,
+  composeTransform,
+} from "./core/dom.js"
+import { getElementIcon, getElementName } from "./core/element-info.js"
 
 /** Vue SFC 编译产物的 scopeId 附加（原 webpack 模块 502 的内联版） */
 function withScopeId(component, attrs) {
@@ -11,70 +18,6 @@ function withScopeId(component, attrs) {
 }
 
 const o = Vue
-function r(e, t = !1) {
-  const n = window.parent.getComputedStyle(e)
-  if (t) {
-    if ("fixed" !== n.position && "absolute" !== n.position) return !1
-  } else if ("fixed" !== n.position) return !1
-  if ("none" === n.display || "hidden" === n.visibility) return !1
-  let a = e.offsetWidth,
-    o = e.offsetHeight
-  if (0 === a || 0 === o) {
-    const t = e.getBoundingClientRect()
-    ;((a = t.width), (o = t.height))
-  }
-  if (a < 18 || a > 150 || o < 18 || o > 150) return !1
-  const r = a / o
-  return !(r < 0.5 || r > 2)
-}
-function i(e) {
-  const t = e.querySelector('i[class*="fa-"]')
-  if (t) {
-    const e = t.className
-      .split(" ")
-      .filter(
-        (e) =>
-          e.startsWith("fa-") ||
-          "fa" === e ||
-          e.startsWith("fas") ||
-          e.startsWith("far") ||
-          e.startsWith("fab") ||
-          "fa-solid" === e ||
-          "fa-regular" === e ||
-          "fa-brands" === e,
-      )
-    return e.length > 0 ? e.join(" ") : t.className
-  }
-  const n = e.querySelector('.ball-inner i, [class*="inner"] i, [class*="content"] i')
-  if (n) {
-    const e = n.className
-      .split(" ")
-      .filter(
-        (e) =>
-          e.startsWith("fa-") ||
-          "fa" === e ||
-          e.startsWith("fas") ||
-          e.startsWith("far") ||
-          e.startsWith("fab") ||
-          "fa-solid" === e ||
-          "fa-regular" === e ||
-          "fa-brands" === e,
-      )
-    return e.length > 0 ? e.join(" ") : n.className
-  }
-  const a = e.querySelector("i")
-  if (a && a.className) return a.className
-  if (e.querySelector("svg")) return "fa-solid fa-circle"
-  return e.querySelector("img") ? "fa-solid fa-image" : "fa-solid fa-puzzle-piece"
-}
-function l(e) {
-  const t = e.getAttribute("title")
-  if (t) return t
-  const n = e.getAttribute("aria-label")
-  if (n) return n
-  const a = e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")
-  return a || "悬浮球"
-}
 function s(e, t) {
   if ("BODY" === e.tagName || "HTML" === e.tagName) return !1
   const n = e.getBoundingClientRect(),
@@ -117,47 +60,6 @@ function s(e, t) {
     txt = (e.textContent || "").trim().length
   if (txt > 4 && !s && !A && !c) return !1
   return !!(l || s || A || c)
-}
-function collectIframeFrames() {
-  const e = []
-  try {
-    window.parent.document.querySelectorAll("iframe").forEach((t) => {
-      try {
-        t.contentDocument && e.push(t)
-      } catch {}
-    })
-  } catch {}
-  return e
-}
-function collectIframeDocs() {
-  return collectIframeFrames().map((e) => e.contentDocument)
-}
-function elementsFromPointAcrossFrames(e, t) {
-  const n = []
-  try {
-    n.push(...window.parent.document.elementsFromPoint(e, t))
-  } catch {}
-  for (const a of collectIframeFrames()) {
-    try {
-      const o = a.getBoundingClientRect(),
-        r = e - o.left,
-        i = t - o.top
-      if (r < 0 || i < 0 || r > o.width || i > o.height) continue
-      n.push(...a.contentDocument.elementsFromPoint(r, i))
-    } catch {}
-  }
-  return n
-}
-function composeTransform(e, t) {
-  const s = `scale(${t})`
-  if (!e || "none" === e) return s
-  if (!/(rotate|skew|scale|matrix|matrix3d)/.test(e)) return s
-  const n = e.match(/^matrix\(([^)]+)\)$/)
-  if (n) {
-    const a = n[1].split(",").map((e) => parseFloat(e))
-    if (a.length >= 6 && 1 === a[0] && 0 === a[1] && 0 === a[2] && 1 === a[3]) return s
-  }
-  return `${e} ${s}`
 }
 let A = null,
   c = !1,
@@ -235,7 +137,7 @@ function f(e, t, n, a, o) {
       pool.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.area - a.area))
       return pool[0].element
     })(r, n)
-    e && a(e) ? (removeReleasedFp(extractFingerprint(e)), toastr.success(`已捕获: ${l(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
+    e && a(e) ? (removeReleasedFp(extractFingerprint(e)), toastr.success(`已捕获: ${getElementName(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
   }
   o()
 }
@@ -2572,8 +2474,8 @@ function gt(e, t) {
       id: r,
       fingerprint: n,
       element: e,
-      icon: i(e),
-      name: l(e),
+      icon: getElementIcon(e),
+      name: getElementName(e),
       originalPosition: s,
       originalDisplay: o,
       originalParent: e.parentElement,
@@ -2774,7 +2676,7 @@ function vt() {
         const t = a.querySelectorAll(`[script_id="${n.fingerprint.scriptId}"]`)
         for (const n of t) {
           const t = n
-          if (r(t, !0) && gt(t, i)) return (e.add(o), !0)
+          if (isFloatingBoxElement(t, !0) && gt(t, i)) return (e.add(o), !0)
         }
         return !1
       }
@@ -2782,7 +2684,7 @@ function vt() {
         try {
           const t = a.getElementById(n.fingerprint.elementId)
           if (t) {
-            if (r(t, !0) && gt(t, i)) return (e.add(o), !0)
+            if (isFloatingBoxElement(t, !0) && gt(t, i)) return (e.add(o), !0)
           }
         } catch {}
         return !1
@@ -2800,7 +2702,7 @@ function vt() {
           const t = a.querySelectorAll(l)
           for (const a of t) {
             const t = a
-            if (r(t, !0)) {
+            if (isFloatingBoxElement(t, !0)) {
               const a = Ne.extractFingerprint(t)
               if (Ne.fingerprintsMatch(a, n.fingerprint) && gt(t, i)) return (e.add(o), !0)
             }
@@ -2878,9 +2780,9 @@ function ht() {
         if (s.scriptId === e) return
         if (!s.scriptId && !s.elementId) return
         const A = n(s)
-        if (A) return void (r(l) && (a(A.id, l), t.add(l)))
+        if (A) return void (isFloatingBoxElement(l) && (a(A.id, l), t.add(l)))
         const c = o(s)
-        if (c && r(l)) {
+        if (c && isFloatingBoxElement(l)) {
           const e = { originalPosition: c.originalPosition, originalStyle: c.originalStyle, order: c.order }
           i(l, e)
         }
@@ -2897,7 +2799,7 @@ function ht() {
         const l = extractFingerprint(o)
         if (!t(l)) return
         const s = n(l)
-        if (s && r(o)) {
+        if (s && isFloatingBoxElement(o)) {
           const e = { originalPosition: s.originalPosition, originalStyle: s.originalStyle, order: s.order }
           a(o, e)
         }
