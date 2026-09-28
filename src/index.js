@@ -1,5 +1,7 @@
 import { klona as e } from "https://testingcf.jsdelivr.net/npm/klona/+esm"
 import { injectStyles } from "./styles/inject.js"
+import { extractFingerprint, fingerprintsMatch, isValidFingerprint, getClassSelector } from "./core/fingerprint.js"
+import { withAlpha, darken } from "./core/color.js"
 
 /** Vue SFC 编译产物的 scopeId 附加（原 webpack 模块 502 的内联版） */
 function withScopeId(component, attrs) {
@@ -233,7 +235,7 @@ function f(e, t, n, a, o) {
       pool.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.area - a.area))
       return pool[0].element
     })(r, n)
-    e && a(e) ? (removeReleasedFp(Y(e)), toastr.success(`已捕获: ${l(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
+    e && a(e) ? (removeReleasedFp(extractFingerprint(e)), toastr.success(`已捕获: ${l(e)}`)) : e || toastr.warning("请点击一个悬浮元素")
   }
   o()
 }
@@ -810,61 +812,6 @@ function L(e) {
     e.style.setProperty("pointer-events", "none", "important"),
     e.style.setProperty("transform", "translateX(-9999px)", "important"))
 }
-function Y(e) {
-  return {
-    scriptId: e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id") || null,
-    elementId: e.id || null,
-    classSelector: U(e),
-    title: e.getAttribute("title") || null,
-  }
-}
-function W(e, t) {
-  if (e.scriptId || t.scriptId) {
-    return !(!e.scriptId || !t.scriptId || e.scriptId !== t.scriptId)
-  }
-  if (e.elementId || t.elementId) {
-    return !(!e.elementId || !t.elementId || e.elementId !== t.elementId)
-  }
-  if (!((e.classSelector && t.classSelector) || (e.title && t.title))) return !1
-  if (e.classSelector && t.classSelector && e.title && t.title) {
-    return e.classSelector === t.classSelector && e.title === t.title
-  }
-  if (e.classSelector && t.classSelector) {
-    return e.classSelector === t.classSelector
-  }
-  if (e.title && t.title) {
-    return e.title === t.title
-  }
-  return !1
-}
-function j(e) {
-  return !!(e.scriptId || e.elementId || e.classSelector || e.title)
-}
-function U(e) {
-  const t = e.className
-  if (t && "string" == typeof t) {
-    const e = t
-      .split(" ")
-      .filter(
-        (e) =>
-          !!e &&
-          !e.startsWith("ui-") &&
-          !e.startsWith("data-v-") &&
-          !/^_[a-zA-Z0-9]+$/.test(e) &&
-          "active" !== e &&
-          "hover" !== e &&
-          "focus" !== e &&
-          "disabled" !== e &&
-          "open" !== e &&
-          "closed" !== e &&
-          "visible" !== e &&
-          "hidden" !== e,
-      )
-      .sort()
-    if (e.length > 0) return "." + e.join(".")
-  }
-  return null
-}
 const X = z,
   T = X.z.object({
     scriptId: X.z.string().nullable(),
@@ -901,7 +848,7 @@ function R() {
 const J = (0, o.ref)([])
 const Rb = (0, o.ref)([])
 function isReleasedFp(e) {
-  for (const t of Rb.value) if (W(e, t)) return !0
+  for (const t of Rb.value) if (fingerprintsMatch(e, t)) return !0
   return !1
 }
 function saveReleasedFps() {
@@ -914,7 +861,7 @@ function saveReleasedFps() {
   } catch {}
 }
 function addReleasedFp(e) {
-  if (!e || !j(e)) return
+  if (!e || !isValidFingerprint(e)) return
   if (isReleasedFp(e)) return
   Rb.value = [
     ...Rb.value,
@@ -930,7 +877,7 @@ function addReleasedFp(e) {
 function removeReleasedFp(e) {
   if (!e) return
   const n = Rb.value.length
-  Rb.value = Rb.value.filter((t) => !W(e, t))
+  Rb.value = Rb.value.filter((t) => !fingerprintsMatch(e, t))
   if (Rb.value.length !== n) saveReleasedFps()
 }
 let Q = !1,
@@ -949,7 +896,7 @@ function ee(e) {
         for (const ball of Array.from(page.children)) a.set(ball, idx++)
     }
     for (const n of Object.values(e))
-      if (j(n.fingerprint)) {
+      if (isValidFingerprint(n.fingerprint)) {
         const e = {
             scriptId: n.fingerprint.scriptId,
             elementId: n.fingerprint.elementId,
@@ -980,11 +927,11 @@ function ee(e) {
   } catch {}
 }
 function te(e) {
-  for (const t of J.value) if (W(e, t.fingerprint)) return t
+  for (const t of J.value) if (fingerprintsMatch(e, t.fingerprint)) return t
   return null
 }
 function ae(e) {
-  J.value = J.value.filter((t) => !W(e, t.fingerprint))
+  J.value = J.value.filter((t) => !fingerprintsMatch(e, t.fingerprint))
 }
 const oe = (0, o.ref)(!1)
 const re = X.z
@@ -1081,11 +1028,11 @@ const pe = {
   xe = (0, o.computed)(() => Object.values(ue.value)),
   ye = (0, o.computed)(() => Object.keys(de.value).length > 0 || Object.keys(ue.value).length > 0)
 function Se(e) {
-  for (const t of Object.values(ue.value)) if (W(e, t.fingerprint)) return !0
+  for (const t of Object.values(ue.value)) if (fingerprintsMatch(e, t.fingerprint)) return !0
   return !1
 }
 function ke(e) {
-  for (const t of Object.values(ue.value)) if (W(e, t.fingerprint)) return t
+  for (const t of Object.values(ue.value)) if (fingerprintsMatch(e, t.fingerprint)) return t
   return null
 }
 function Pe() {
@@ -1116,7 +1063,7 @@ function Fe(e, t) {
         pointerEventsValue: r.pointerEvents,
       }),
       (n.originalDisplay = r.display || "flex"),
-      (n.fingerprint = Y(t)),
+      (n.fingerprint = extractFingerprint(t)),
       (n.element = t),
       G(n, o),
       e && e.isConnected && e !== t && e.remove())
@@ -1436,7 +1383,7 @@ const Ne = {
     fbPageIndex = 0
     fbRebuildLayer()
   },
-  fbGoPage: fbGoPage,
+  fbGoPage,
   fbGetPageState: function () {
     return { index: fbPageIndex, count: fbPageCount, per: fbPerPage() }
   },
@@ -1469,7 +1416,7 @@ const Ne = {
   getPendingRestoreBalls: function () {
     return J.value
   },
-  extractFingerprint: Y,
+  extractFingerprint,
   generateBallIdFromFingerprint: function (e) {
     if (e.scriptId) return `ball_script_${e.scriptId}`
     if (e.elementId) return `ball_id_${e.elementId}`
@@ -1482,11 +1429,11 @@ const Ne = {
     }
     return `ball_random_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   },
-  fingerprintsMatch: W,
-  isValidFingerprint: j,
+  fingerprintsMatch,
+  isValidFingerprint,
   isFingerprintCaptured: Se,
   findCapturedBallByFingerprint: ke,
-  getClassSelector: U,
+  getClassSelector,
   isElementIdCaptured: function (e) {
     return !!e && Se({ scriptId: null, elementId: e, classSelector: null, title: null })
   },
@@ -1506,40 +1453,7 @@ const Ie = _,
     glassHoverBg: "rgba(20, 20, 30, 0.7)",
   })
 let qe = null
-const Oe = (e, t) => {
-    if (!e || "transparent" === e) return `rgba(0, 0, 0, ${t})`
-    try {
-      if (e.startsWith("rgba")) {
-        const n = e.substring(e.indexOf("(") + 1, e.lastIndexOf(")")).split(",")
-        if (n.length >= 3) return `rgba(${n[0].trim()}, ${n[1].trim()}, ${n[2].trim()}, ${t})`
-      } else if (e.startsWith("rgb")) {
-        const n = e.substring(e.indexOf("(") + 1, e.lastIndexOf(")")).split(",")
-        if (n.length >= 3) return `rgba(${n[0].trim()}, ${n[1].trim()}, ${n[2].trim()}, ${t})`
-      }
-    } catch {}
-    return e
-  },
-  $e = (e, t) => {
-    try {
-      if (e.startsWith("rgba")) {
-        const n = e.substring(e.indexOf("(") + 1, e.lastIndexOf(")")).split(",")
-        if (n.length >= 3) {
-          let e = parseInt(n[0].trim(), 10),
-            a = parseInt(n[1].trim(), 10),
-            o = parseInt(n[2].trim(), 10)
-          const r = n.length > 3 ? parseFloat(n[3].trim()) : 1
-          return (
-            (e = Math.max(0, e - e * t)),
-            (a = Math.max(0, a - a * t)),
-            (o = Math.max(0, o - o * t)),
-            `rgba(${Math.round(e)}, ${Math.round(a)}, ${Math.round(o)}, ${r})`
-          )
-        }
-      }
-    } catch {}
-    return e
-  },
-  _e = () => {
+const _e = () => {
     try {
       const e = window.parent.document
       let t = "rgba(30, 30, 40, 0.9)",
@@ -1570,18 +1484,18 @@ const Oe = (e, t) => {
         let a = window.parent.getComputedStyle(d[0]).backgroundColor
         ;(("rgba(0, 0, 0, 0)" !== a && "transparent" !== a) ||
           (a = window.parent.getComputedStyle(e.body).backgroundColor),
-          (s = Oe(a, 1)))
+          (s = withAlpha(a, 1)))
         const o = e.querySelector("#top-bar")
         if (o) {
           const e = window.parent.getComputedStyle(o).backgroundColor
-          t = Oe("rgba(0, 0, 0, 0)" !== e && "transparent" !== e ? e : a, 1)
-        } else t = Oe(a, 1)
-        ;((n = $e(t, 0.15)), (c = Oe(t, 0.6)), (p = Oe(n, 0.7)))
+          t = withAlpha("rgba(0, 0, 0, 0)" !== e && "transparent" !== e ? e : a, 1)
+        } else t = withAlpha(a, 1)
+        ;((n = darken(t, 0.15)), (c = withAlpha(t, 0.6)), (p = withAlpha(n, 0.7)))
       }
       const u = e.querySelector(".mes:not(.user-mes)")
       if (u) {
         const e = window.parent.getComputedStyle(u).backgroundColor
-        ;((a = Oe(e, 1)), (o = $e(a, 0.15)))
+        ;((a = withAlpha(e, 1)), (o = darken(a, 0.15)))
       }
       const g = e.querySelector(".mes_text")
       g && (i = window.parent.getComputedStyle(g).color)
@@ -1598,7 +1512,7 @@ const Oe = (e, t) => {
       const f = e.querySelector(".fa-solid")
       if (f) {
         const e = window.parent.getComputedStyle(f).color
-        r = Oe(e, 1)
+        r = withAlpha(e, 1)
       }
       const b = e.querySelector("#send_textarea")
       ;(b && (l = window.parent.getComputedStyle(b).borderColor),
@@ -1767,7 +1681,7 @@ const Ge = { class: "panel-icons" },
           if (n.element === e)
             return (
               e.setAttribute("data-edge-panel-ignore", "1"),
-              addReleasedFp(n.fingerprint || Y(e)),
+              addReleasedFp(n.fingerprint || extractFingerprint(e)),
               b(n.id),
               e.removeAttribute("data-edge-panel-ignore"),
               (filterPendingBall(n.fingerprint, e)),
@@ -1778,7 +1692,7 @@ const Ge = { class: "panel-icons" },
         return (
           !!n &&
           (e.setAttribute("data-edge-panel-ignore", "1"),
-          addReleasedFp(Y(e)),
+          addReleasedFp(extractFingerprint(e)),
           b(`ball_${n}`),
           e.removeAttribute("data-edge-panel-ignore"),
           (filterPendingBall(null, e)),
@@ -1787,8 +1701,8 @@ const Ge = { class: "panel-icons" },
         )
       }
       function filterPendingBall(fp, e) {
-  const a = fp || Y(e)
-  J.value = J.value.filter((t) => !W(t.fingerprint, a))
+  const a = fp || extractFingerprint(e)
+  J.value = J.value.filter((t) => !fingerprintsMatch(t.fingerprint, a))
   try {
     const o = { ...(getVariables({ type: "script", script_id: R() }) ?? {}), savedBalls: JSON.parse(JSON.stringify(J.value)) }
     replaceVariables(o, { type: "script", script_id: R() })
@@ -2699,7 +2613,7 @@ function isFloatingBallCandidate(e, ownScriptId) {
   if (e.hasAttribute("data-edge-panel-ignore")) return !1
   if ("none" === style.display || "hidden" === style.visibility || "0" === style.opacity) return !1
   if ((e.getAttribute("script_id") || e.closest("[script_id]")?.getAttribute("script_id")) === ownScriptId) return !1
-  if ("auto" === pe.getCaptureMode() && isReleasedFp(Y(e))) return !1
+  if ("auto" === pe.getCaptureMode() && isReleasedFp(extractFingerprint(e))) return !1
   if (S && S.contains(e)) return !1
   if (e.closest(".edge-panel-root,[data-edge-panel-owner]")) return !1
 
@@ -2960,7 +2874,7 @@ function ht() {
   const e = (function (e, t, n, a, o, i) {
       return (l) => {
         if (t.has(l) || l.hasAttribute("data-edge-panel-ignore")) return
-        const s = Y(l)
+        const s = extractFingerprint(l)
         if (s.scriptId === e) return
         if (!s.scriptId && !s.elementId) return
         const A = n(s)
@@ -2980,7 +2894,7 @@ function ht() {
         })(o)
         if (i) return
         if (o.id) return
-        const l = Y(o)
+        const l = extractFingerprint(o)
         if (!t(l)) return
         const s = n(l)
         if (s && r(o)) {

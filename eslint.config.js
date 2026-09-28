@@ -12,6 +12,8 @@ const platformGlobals = {
   getScriptId: 'readonly',
   getVariables: 'readonly',
   replaceVariables: 'readonly',
+  // 宿主机注入的工具库（代码中仅用到 _.debounce；计划内联掉以去除该隐式依赖）
+  _: 'readonly',
 }
 
 export default [
