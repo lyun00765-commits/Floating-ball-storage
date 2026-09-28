@@ -6,9 +6,12 @@
   "description": "SillyTavern 酒馆助手脚本：悬浮球收纳（重构版）",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "node scripts/check.mjs"
+    "check": "node scripts/check.mjs",
+    "lint": "eslint src scripts"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0"
   }
 }

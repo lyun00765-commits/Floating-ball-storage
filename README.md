@@ -10,9 +10,31 @@ SillyTavern「酒馆助手」脚本：自动收纳页面上的悬浮球，统一
 
 ## 目录
 
-- `src/index.js` —— 当前工程源码（**注意：v1.0 是 webpack 打包产物，非原始源码**）
+- `src/` —— 源码（多文件 ESM）
+  - `index.js` —— 入口（当前仍是单文件形态，正在逐步拆分）
+  - `styles/` —— 面板样式与注入
 - `dist/` —— 可导入酒馆的 JSON 产物（`悬浮球收纳-v1.0.json` 为重构前的基线版本）
-- `docs/` —— 审查记录、重构方案与决策日志
+- `docs/` —— 评估报告与重构日志
+- `scripts/` —— 构建与检查脚本
+
+## 开发
+
+```bash
+npm install          # 首次
+npm run check        # 语法 + 依赖图检查
+npm run lint         # no-undef / no-unused-vars（平台全局已列入白名单）
+npm run build        # 打包到 build/script.json（不入 git，供本地导入测试）
+```
+
+构建产物写入 `build/`，**不提交**；确认稳定后才人工拷入 `dist/` 作为发布版本。
+
+## 平台契约
+
+脚本运行在酒馆助手的 iframe 中，下列标识符由宿主注入，不参与打包：
+
+`Vue`、`$`（jQuery）、`toastr`、`z`（zod）、`getScriptId`、`getVariables`、`replaceVariables`
+
+外部 CDN 依赖（`klona`）通过 `import` URL 引入，esbuild 配置为 external。
 
 ## 状态
 
