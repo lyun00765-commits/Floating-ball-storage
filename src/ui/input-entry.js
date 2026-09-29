@@ -33,7 +33,6 @@ export function installInputEntry() {
     function getMode() {
       try {
         let m = PW.localStorage.getItem(LS_KEY);
-        if (m === "both") m = "edge";
         return m === "edge" || m === "input" || m === "longpress" ? m : "edge";
       } catch (e) {
         return "edge";
