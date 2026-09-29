@@ -12,7 +12,8 @@
 import { settingsApi } from "../settings.js";
 import { themeApi } from "../theme.js";
 import { addReleased } from "../persist/released.js";
-import { extractFingerprint, fingerprintsMatch } from "../core/fingerprint.js";
+import { extractFingerprint, fingerprintsMatch, isValidFingerprint } from "../core/fingerprint.js";
+import { OVERLAP_THRESHOLD, rectOverlapRatio } from "../core/overlap.js";
 import { getOwnScriptId, notify } from "../core/platform.js";
 import { goPage } from "./pagination.js";
 import { pendingRestoreBalls } from "../persist/saved-balls.js";
@@ -149,6 +150,39 @@ const Ge = { class: "panel-icons" },
         }
         return a;
       }
+      // 与球同父且高度重叠的「空装饰」兄弟（环形外框之类）连带记入释放记忆。
+      // 否则球被释放后：球进了释放记忆、不再参与重叠去重，装饰兄弟会在下一轮
+      // 自动扫描中被单独捕走。只标无图标无文字的空装饰，避免误伤相邻的真球。
+      // 调用时机必须在 removeCapturedBall 之后——那时球才被还原回页面原位，
+      // getBoundingClientRect 才能拿到真实位置。
+      function markSiblingDecorationsReleased(el) {
+        const parent = el && el.parentElement;
+        if (!parent) return;
+        let rect;
+        try {
+          rect = el.getBoundingClientRect();
+        } catch {
+          return; /* 元素已脱离文档，无法定位则放弃连带 */
+        }
+        for (const sib of parent.children) {
+          if (sib === el || sib.nodeType !== 1) continue;
+          try {
+            const st = window.parent.getComputedStyle(sib);
+            if ("fixed" !== st.position && "absolute" !== st.position) continue;
+            if (sib.querySelector("i, svg, img") || (sib.textContent || "").trim())
+              continue;
+            if (
+              rectOverlapRatio(rect, sib.getBoundingClientRect()) <=
+              OVERLAP_THRESHOLD
+            )
+              continue;
+            const fp = extractFingerprint(sib);
+            if (isValidFingerprint(fp)) addReleased(fp);
+          } catch {
+            /* 兄弟节点已失效，跳过 */
+          }
+        }
+      }
       // 释放一个已收纳球的公共流程：标忽略（防观察者在释放瞬间重捕）→
       // 记释放记忆 → 从面板移除（内部还原到原位置）→ 同步找回进度 → 提示
       function doReleaseBall(n, el) {
@@ -156,6 +190,7 @@ const Ge = { class: "panel-icons" },
           el.setAttribute("data-edge-panel-ignore", "1"),
           addReleased(n.fingerprint || extractFingerprint(el)),
           b(n.id),
+          markSiblingDecorationsReleased(el),
           el.removeAttribute("data-edge-panel-ignore"),
           filterPendingBall(n.fingerprint, el),
           void notify.info(`已释放悬浮球: ${n.name}`),
@@ -239,6 +274,7 @@ const Ge = { class: "panel-icons" },
                 try {
                   addReleased(e.fingerprint);
                   deps.store.removeCapturedBall(e.id);
+                  e.element && markSiblingDecorationsReleased(e.element);
                   filterPendingBall(e.fingerprint, e.element);
                   e.element &&
                     e.element.removeAttribute("data-edge-panel-ignore");

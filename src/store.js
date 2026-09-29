@@ -93,7 +93,8 @@ function updateBallElement(e, t) {
   if (n) {
     const e = n.element,
       o = containsBall(e) ? e.nextSibling : null,
-      r = window.parent.getComputedStyle(t);
+      r = window.parent.getComputedStyle(t),
+      rect = t.getBoundingClientRect();
     ((n.originalParent = t.parentElement),
       (n.originalNextSibling = t.nextSibling),
       (n.originalStyle = t.style.cssText),
@@ -106,6 +107,15 @@ function updateBallElement(e, t) {
         opacityValue: r.opacity,
         visibilityValue: r.visibility,
         pointerEventsValue: r.pointerEvents,
+      }),
+      // 原位矩形同步换新，「装饰兄弟」重叠排除读取的是这份记录
+      (n.originalRect = {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
       }),
       (n.originalDisplay = r.display || "flex"),
       (n.fingerprint = extractFingerprint(t)),

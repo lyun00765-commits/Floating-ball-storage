@@ -18,6 +18,7 @@ import { settingsApi, setCaptureModeChangeHandler } from '../settings.js'
 import { getOwnScriptId } from '../core/platform.js'
 import { isFloatingBallCandidate } from './candidate.js'
 import { collectIframeDocs, isFloatingBoxElement } from '../core/dom.js'
+import { OVERLAP_THRESHOLD, preferredBallElement, rectOverlapRatio } from '../core/overlap.js'
 import { getElementIcon, getElementName } from '../core/element-info.js'
 import { isReleasedFingerprint, removeReleased } from '../persist/released.js'
 import { pendingRestoreBalls, beginRestoreBatch, finishRestore } from '../persist/saved-balls.js'
@@ -88,6 +89,7 @@ export function tryCaptureBall(e, t) {
       pointerEventsValue: a.pointerEvents,
     },
     A = e.style.cssText,
+    rect = e.getBoundingClientRect(),
     c = {
       id: r,
       fingerprint: n,
@@ -95,6 +97,16 @@ export function tryCaptureBall(e, t) {
       icon: getElementIcon(e),
       name: getElementName(e),
       originalPosition: s,
+      // 捕获瞬间的页面原位矩形（数字版）。球被收进面板后元素已移位，
+      // 「装饰兄弟」重叠排除只能靠这份记录还原它原来占的位置
+      originalRect: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      },
       originalDisplay: o,
       originalParent: e.parentElement,
       originalNextSibling: e.nextSibling,
@@ -166,14 +178,39 @@ export function scanOnce(forceFullScan) {
     scanThrottle = 6
   } else scanThrottle--
 
+  // 「装饰兄弟」防护（环形外框与球本体是兄弟节点，contains 去重拦不住）：
+  // 先拿到所有已捕获球的页面原位矩形，候选若与之高度重叠则跳过——
+  // 球本体被收进面板后不再是候选，若没有这道拦截，它的环形外框会在
+  // 下一轮扫描中失去「去重对手」而被单独捕走。
+  const capturedRects = []
+  for (const b of Object.values(deps.store.capturedBalls?.value || {}))
+    b.originalRect && capturedRects.push(b.originalRect)
+
   const passed = []
   candidates.forEach((el) => {
-    if (!capturedElements.has(el) && isFloatingBallCandidate(el, scriptId)) passed.push(el)
+    if (capturedElements.has(el) || !isFloatingBallCandidate(el, scriptId)) return
+    if (capturedRects.length) {
+      const rect = el.getBoundingClientRect()
+      if (capturedRects.some((r) => rectOverlapRatio(rect, r) > OVERLAP_THRESHOLD)) return
+    }
+    passed.push(el)
   })
-  // 同一条 DOM 包含链上可能同时命中多个候选（例如外层球容器 + 内部又是 absolute
-  // 定位的图标包装层都各自达到了打分阈值）。这种情况下只保留"最外层"的一个再去
-  // 捕获，避免同一个悬浮球被拆成两条记录（球容器一条、内部图标又单独一条）。
-  const toCapture = passed.filter((el) => !passed.some((other) => other !== el && other.contains(el)))
+  // 同一轮里的去重分两层：
+  // 1) DOM 包含链：外层球容器与内部 absolute 图标包装层同时命中时，只保留最外层，
+  //    避免同一个球被拆成两条记录（球容器一条、内部图标又单独一条）。
+  // 2) 视觉重叠：兄弟关系的装饰元素（环形外框等）与球本体矩形高度重叠时，
+  //    只保留更可能是本体的一个（有内容优先、面积小优先，见 core/overlap.js）。
+  const rectOf = new Map(passed.map((el) => [el, el.getBoundingClientRect()]))
+  const toCapture = passed.filter(
+    (el) =>
+      !passed.some((other) => other !== el && other.contains(el)) &&
+      !passed.some(
+        (other) =>
+          other !== el &&
+          rectOverlapRatio(rectOf.get(el), rectOf.get(other)) > OVERLAP_THRESHOLD &&
+          preferredBallElement(other, el) === other,
+      ),
+  )
   toCapture.forEach((el) => tryCaptureBall(el))
 }
 export function startAutoScan() {
