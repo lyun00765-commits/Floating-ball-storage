@@ -1,6 +1,6 @@
 {
   "name": "floating-ball-storage",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "SillyTavern 酒馆助手脚本：悬浮球收纳（重构版）",
