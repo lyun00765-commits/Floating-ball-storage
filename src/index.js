@@ -68,11 +68,6 @@ let rt = null,
   it = null,
   st = null;
 function ht() {
-  setOwnershipDeps({
-    styleHost: edgePanelStyleHost,
-    mountHost: it,
-    requestCleanup: () => edgePanelRuntimeCleanup(),
-  });
   setViewportGuardDeps({
     togglePanel: () => store.togglePanel(),
     getPanelPositionTarget: () => store.setPanelLeftPosition,
@@ -107,6 +102,14 @@ function ht() {
       (st = setInterval(() => {
         store.cleanupInvalidBalls();
       }, 3e4)));
+  // 必须在装配链之后注入：it / edgePanelStyleHost 在链里才完成赋值。
+  // 提前注入会把 null 快照交给 deps，ensureArtifacts 的「节点被宿主移除后自动重挂」
+  // 将永远走不到（deps.mountHost 恒为 null），功能静默失效且无任何报错。
+  setOwnershipDeps({
+    styleHost: edgePanelStyleHost,
+    mountHost: it,
+    requestCleanup: () => edgePanelRuntimeCleanup(),
+  });
   const e = (function (e, t, n, a, o, i) {
       return (l) => {
         if (t.has(l) || l.hasAttribute("data-edge-panel-ignore")) return;
