@@ -6,7 +6,7 @@
  * ESC 或右键取消。
  *
  * 注意：这里的判定规则与自动扫描的 isFloatingBallCandidate 是两套独立实现，
- * 阈值与打分口径并不一致（待合并，见 docs/01 基线评估 A1）。
+ * 阈值与打分口径并不一致（待合并，见 docs/archive/01-基线评估-v1.0.md A1）。
  */
 
 import { collectIframeDocs, elementsFromPointAcrossFrames } from '../core/dom.js'
