@@ -267,6 +267,17 @@ function unbindInteractionGuards(e) {
   const r = ballClickHandlers.get(e)
   r && (e.removeEventListener("click", r, !0), ballClickHandlers.delete(e))
 }
+/**
+ * 释放元素上的全部接管资源（交互守卫 + 弹层托管观察）。
+ *
+ * 用于「球元素被同指纹新元素替换」的路径（store.updateCapturedBallElement）：
+ * 旧元素不走 restoreBall 的还原流程，但它在 popupRegistries（强引用 Map）里的
+ * 条目、以及挂在其子树上的 MutationObserver 不会自己消失——不释放就会随每次
+ * 元素替换永久泄漏一份。样式保护记录在 WeakMap 里，随元素被 GC 自动消亡，无需解除。
+ */
+export function releaseElementResources(e) {
+  unbindInteractionGuards(e);
+}
 export function moveBallToContainer(e) {
   if (!getContainer()) return (console.warn("[集成控件] 悬浮球容器未设置，无法移动悬浮球"), void hideBall(e.element))
   const t = e.element

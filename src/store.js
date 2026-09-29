@@ -30,6 +30,7 @@ import {
   hideBall,
   insertBallBefore,
   moveBallToContainer,
+  releaseElementResources,
   restoreBall,
 } from "./panel/takeover.js";
 import {
@@ -110,6 +111,9 @@ function updateBallElement(e, t) {
       (n.fingerprint = extractFingerprint(t)),
       (n.element = t),
       insertBallBefore(n, o),
+      // 旧元素被替换：先释放它身上的接管资源（弹层托管观察、交互守卫），
+      // 否则 popupRegistries 的强引用条目与 MutationObserver 会随每次替换泄漏
+      e && e !== t && releaseElementResources(e),
       e && e.isConnected && e !== t && e.remove());
   }
 }

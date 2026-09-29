@@ -21,6 +21,7 @@ import { collectIframeDocs, isFloatingBoxElement } from '../core/dom.js'
 import { getElementIcon, getElementName } from '../core/element-info.js'
 import { isReleasedFingerprint, removeReleased } from '../persist/released.js'
 import { pendingRestoreBalls, beginRestoreBatch, finishRestore } from '../persist/saved-balls.js'
+import { isRuntimeCleaned } from '../runtime-ownership.js'
 /** 扫描循环定时器 */
 let scanTimer = null
 /** 启动后立即跑一次全量的定时器 */
@@ -245,6 +246,11 @@ export function restorePendingBalls() {
       return !1
     },
     a = (o) => {
+      // 运行时已销毁（脚本被删/iframe 被移除）时放弃重试并收尾：
+      // 重试链最长存活约 3 分钟，若不清醒地退出，迟到的球仍会被 tryCaptureBall
+      // 收进 store，但容器已随卸载置空，moveBallToContainer 会退化为 hideBall
+      // 把球藏起来——用户看到的就是「球凭空消失，刷新才回来」。
+      if (isRuntimeCleaned()) return void finishRestore(deps.store.capturedBalls.value)
       const docs = [window.parent.document, ...collectIframeDocs()],
         i = pendingRestoreBalls.value.filter((n) => !e.has(t(n.fingerprint)) && !isReleasedFingerprint(n.fingerprint))
       for (const e of i) for (const r of docs) if (n(e, r)) break
