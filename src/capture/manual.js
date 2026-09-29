@@ -135,7 +135,9 @@ function captureAtPoint(e, t, n, a, o) {
       pool.sort((a, b) => (b.score !== a.score ? b.score - a.score : b.area - a.area))
       return pool[0].element
     })(r, n)
-    e && a(e) ? (removeReleased(extractFingerprint(e)), notify.success(`已捕获: ${getElementName(e)}`)) : e || notify.warning("请点击一个悬浮元素")
+    e && a(e)
+      ? (removeReleased(extractFingerprint(e)), notify.success(`已捕获: ${getElementName(e)}`))
+      : notify.warning(e ? "该元素无法捕获（未识别为悬浮球）" : "请点击一个悬浮元素")
   }
   o()
 }

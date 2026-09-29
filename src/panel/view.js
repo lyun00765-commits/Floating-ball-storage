@@ -149,33 +149,33 @@ const Ge = { class: "panel-icons" },
         }
         return a;
       }
+      // 释放一个已收纳球的公共流程：标忽略（防观察者在释放瞬间重捕）→
+      // 记释放记忆 → 从面板移除（内部还原到原位置）→ 同步找回进度 → 提示
+      function doReleaseBall(n, el) {
+        return (
+          el.setAttribute("data-edge-panel-ignore", "1"),
+          addReleased(n.fingerprint || extractFingerprint(el)),
+          b(n.id),
+          el.removeAttribute("data-edge-panel-ignore"),
+          filterPendingBall(n.fingerprint, el),
+          void notify.info(`已释放悬浮球: ${n.name}`),
+          !0
+        );
+      }
       function releaseBallElement(e) {
         if (!e) return !1;
         const t = i.value;
-        for (const n of t)
-          if (n.element === e)
-            return (
-              e.setAttribute("data-edge-panel-ignore", "1"),
-              addReleased(n.fingerprint || extractFingerprint(e)),
-              b(n.id),
-              e.removeAttribute("data-edge-panel-ignore"),
-              filterPendingBall(n.fingerprint, e),
-              void notify.info(`已释放悬浮球: ${n.name}`),
-              !0
-            );
-        const n =
+        for (const n of t) if (n.element === e) return doReleaseBall(n, e);
+        // 兜底：点中的不是球元素本身（如命中其外层容器），按 script_id 反查记录。
+        // id 格式必须与 store.generateBallIdFromFingerprint 一致（ball_script_<id>）
+        // ——这里曾写成 `ball_${sid}`，永远匹配不到已收纳球，是 v1.0 遗留的死分支；
+        // 且命中前会先误写一条释放记忆。现在先确认记录存在再进入释放流程。
+        const sid =
           e.getAttribute("script_id") ||
           e.closest("[script_id]")?.getAttribute("script_id");
-        return (
-          !!n &&
-          (e.setAttribute("data-edge-panel-ignore", "1"),
-          addReleased(extractFingerprint(e)),
-          b(`ball_${n}`),
-          e.removeAttribute("data-edge-panel-ignore"),
-          filterPendingBall(null, e),
-          notify.info("已释放悬浮球"),
-          !0)
-        );
+        if (!sid) return !1;
+        const rec = deps.store.capturedBalls.value[`ball_script_${sid}`];
+        return rec ? doReleaseBall(rec, rec.element) : !1;
       }
       function filterPendingBall(fp, e) {
         const a = fp || extractFingerprint(e);

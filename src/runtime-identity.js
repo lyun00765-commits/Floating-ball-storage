@@ -10,11 +10,14 @@
 
 export const parentWin = window.parent,
   parentDoc = parentWin.document,
+  // 异常兜底与 core/platform.getOwnScriptId 保持一致（"集成控件"）：
+  // scanner 的候选排除、点选遮罩的 script_id 标记都走那个兜底值，
+  // 这里若返回空串，removeStaleArtifacts 与删除信号判定会在宿主异常时静默失灵
   runtimeId = (function () {
     try {
       return getScriptId()
     } catch (e) {
-      return ""
+      return "集成控件"
     }
   })(),
   runtimeOwner = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,

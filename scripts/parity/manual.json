@@ -14,6 +14,11 @@
         "desc": "【容错】toastr.* 改用 core/platform 的 notify.*（A4）：宿主未注入时不会抛错，避免遮断后续逻辑（如移除捕获遮罩）",
         "find": "toastr.",
         "replace": "notify."
+      },
+      {
+        "desc": "【行为修正】点选命中候选但捕获失败时给出提示：原先 `e || notify.warning(...)` 在候选非空时短路，捕获失败（指纹无效等）静默退出，用户会误以为已捕获",
+        "find": "e && a(e) ? (removeReleased(extractFingerprint(e)), notify.success(`已捕获: ${getElementName(e)}`)) : e || notify.warning(\"请点击一个悬浮元素\")",
+        "replace": "e && a(e)\n      ? (removeReleased(extractFingerprint(e)), notify.success(`已捕获: ${getElementName(e)}`))\n      : notify.warning(e ? \"该元素无法捕获（未识别为悬浮球）\" : \"请点击一个悬浮元素\")"
       }
     ],
     "isManualCaptureCandidate": [

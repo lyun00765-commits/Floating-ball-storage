@@ -161,9 +161,16 @@ export function isScriptRemovalSignal(e) {
   if (isOwnedNode(e)) return !1;
   if (nodeMentionsScriptByText(e)) return !0;
   if ("function" != typeof e.querySelector) return !1;
-  return [...e.querySelectorAll("*")].some(
-    (e) => !isOwnedNode(e) && nodeMentionsScriptByText(e),
-  );
+  // 子树扫描设上限：宿主动作观察者在 AI 流式输出期间会对每个被移除节点触发本判定，
+  // 大子树（如整条聊天消息）全扫是可观开销。删除信号来自脚本列表项这类小节点，
+  // 若真命中必然很浅；超过上限还没命中，视为「未提及本脚本」。
+  const descendants = e.querySelectorAll("*");
+  const limit = Math.min(descendants.length, 300);
+  for (let i = 0; i < limit; i++) {
+    const d = descendants[i];
+    if (!isOwnedNode(d) && nodeMentionsScriptByText(d)) return !0;
+  }
+  return !1;
 }
 
 export function nodeMentionsScriptByText(e) {
