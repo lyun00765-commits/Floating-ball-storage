@@ -69,7 +69,7 @@ npm run build        # 打包到 build/script.json（不入 git，供本地导�
 
 ## 开发约定
 
-- GitHub 远程：https://github.com/lyun00765-commits/Floating-ball-storage（推送需自行配置凭据）
+- GitHub 远程：https://github.com/lyun00765-commits/Floating-ball-storage
 - 提交格式 `<type>: <描述>`（feat/fix/docs/refactor/chore）
 - 破坏性改动前先提交基线或打 tag
-- **改代码前先读 `docs/03-交接与后续计划.md`**：里面记着若干「看起来奇怪但有意为之」的设计
+- **改代码前先读 `docs/03-交接与后续计划.md`**
