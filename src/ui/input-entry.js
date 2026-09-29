@@ -84,13 +84,18 @@ export function installInputEntry() {
 
     function applyMode() {
       let m = getMode();
-      ensureDynStyle().textContent =
+      let cssText =
         m === "input" || m === "longpress"
           ? ".edge-panel-root .edge-tab{display:none!important;}"
           : "";
+      let display = m === "edge" || m === "longpress" ? "none" : "flex";
+      // 读比较、变了才写：mountObserver 在父页面每次 DOM 变更批次都会调到这里，
+      // AI 流式输出期间若无条件重写 <style> 内容与 inline display，
+      // 等于持续触发表样式重算。读 textContent / inline style 是廉价操作。
+      let s = ensureDynStyle();
+      if (s.textContent !== cssText) s.textContent = cssText;
       let btn = PD.getElementById(BTN_ID);
-      if (btn)
-        btn.style.display = m === "edge" || m === "longpress" ? "none" : "flex";
+      if (btn && btn.style.display !== display) btn.style.display = display;
     }
 
     const NOSEL_ID = "fb-storage-nosel";
@@ -894,7 +899,40 @@ export function installInputEntry() {
       } catch (e) {
         /* 解绑失败不影响后续清理 */
       }
+      // 长按计时器与「禁止选中」提示定时器一并收掉，避免清理后还触发一次
+      if (lpTimer) {
+        PW.clearTimeout(lpTimer);
+        lpTimer = null;
+      }
+      if (noselTimer) {
+        PW.clearTimeout(noselTimer);
+        noselTimer = null;
+      }
+      // 三个弹层都要关：模式/位置/入口菜单（此前只关了第一个，
+      // 脚本在位置或入口菜单打开时被删，弹层会残留到刷新）
       closePopover();
+      closePosMenu();
+      closeEntryMenu();
+      // 挂在 window 上的菜单入口与注入的三段样式也属于本脚本，一并摘除
+      try {
+        delete window.openPosMenu;
+      } catch (e) {
+        /* 属性不可删时放弃，残留无害 */
+      }
+      try {
+        delete window.openEntryMenu;
+      } catch (e) {
+        /* 同上 */
+      }
+      [STATIC_ID, DYN_ID, NOSEL_ID].forEach(function (id) {
+        const s = PD.getElementById(id);
+        if (s && s.parentNode) s.parentNode.removeChild(s);
+      });
+      try {
+        PD.documentElement.classList.remove("fb-nosel");
+      } catch (e) {
+        /* documentElement 不可用时跳过 */
+      }
       const b = PD.getElementById(BTN_ID);
       if (b && b.parentNode) b.parentNode.removeChild(b);
     }
