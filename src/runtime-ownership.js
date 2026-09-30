@@ -214,7 +214,15 @@ export function attachHostActionWatchers() {
       for (const t of e)
         if ("childList" === t.type)
           for (const e of t.removedNodes)
-            if (isScriptRemovalSignal(e)) return void deps.requestCleanup();
+            if (isScriptRemovalSignal(e)) {
+              // 删除信号只是「有节点提到本脚本」，不代表脚本真的被删——
+              // 典型误报：toast 提示条。捕获的球若带本脚本的 script_id 且无
+              // title/aria-label，球名会取成该 id，notify 的「已捕获: <id>」
+              // 提示关闭时节点被移除即命中本条（v1.2 实际触发过整体 cleanup）。
+              // 因此不直接清理，交给激进存在检查做延迟确认：120ms 后核实
+              // 本脚本 iframe 是否还在，真被删才清理，误报则安全落地。
+              return void scheduleAggressivePresenceCheck();
+            }
     })),
     hostActionObserver.observe(parentDoc.body, { childList: !0, subtree: !0 }));
 }
